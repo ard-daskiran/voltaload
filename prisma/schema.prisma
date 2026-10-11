@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model TestRun {
+  id        String   @id @default(uuid())
+  url       String
+  method    String   @default("GET")
+  body      String?
+  targetRps Int
+  duration  Int
+  createdAt DateTime @default(now())
+
+  // CONSTANT (sabit yük) | STEPPED (kademeli artış)
+  loadProfile String @default("CONSTANT")
+  // Sadece STEPPED testlerde dolu
+  stepCount   Int?
+
+  // RUNNING | COMPLETED | STOPPED | FAILED | INTERRUPTED
+  status     String    @default("RUNNING")
+  finishedAt DateTime?
+
+  // Test bitince bir kere hesaplanıp yazılır. Geçmiş listesi sadece bunları okur.
+  totalRequests    Int?
+  avgResponseTime  Float?
+  minResponseTime  Int?
+  maxResponseTime  Int?
+  p95              Int?
+  p99              Int?
+  stdDev           Float?
+  serverErrorCount Int?
+  totalBytes       BigInt?
+  actualDurationMs Int?
+  // Test boyunca Volta'nın en yüksek gecikmesi (ilk saniye hariç).
+  // Uyarı sınırını aştıysa analiz "Volta zorlandı, sonuçlar güvenilir olmayabilir" der.
+  maxLagMs         Int?
+
+  results TestResult[]
+}
+
+model TestResult {
+  id        Int      @id @default(autoincrement())
+  testRunId String
+  timestamp DateTime @default(now())
+
+  // Cevap gelmediyse 0
+  statusCode Int
+
+  // Cevap gelmediyse: TIMEOUT | CONNECTION_REFUSED | CONNECTION_RESET | NETWORK_ERROR
+  errorType String?
+
+  responseTime Int
+
+  // Ağdan inen boyut (byte)
+  responseSize Int @default(0)
+
+  testRun TestRun @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+
+  @@index([testRunId])
+}
+
+// Kayıtlı hedefler (URL rehberi). Veritabanı temizleme bu tabloya dokunmaz.
+model SavedTarget {
+  id        Int      @id @default(autoincrement())
+  name      String
+  // İsmin küçük harfli hali: "Test Sunucusu" ile "test sunucusu" aynı sayılsın
+  nameKey   String   @unique
+  url       String   @unique
+  createdAt DateTime @default(now())
+}

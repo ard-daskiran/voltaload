@@ -1,0 +1,235 @@
+<!doctype html>
+<html class="dark" lang="tr" translate="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="google" content="notranslate" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title data-i18n="history.pageTitle">Volta — Test Geçmişi</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/js/tailwind-config.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+      body {
+        background-color: #0b0e14;
+        color: #e1e2eb;
+      }
+      .glow-effect:focus-within {
+        box-shadow: 0 0 8px rgba(244, 194, 26, 0.4);
+        border-color: #f4c21a;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen font-body-md text-body-md flex flex-col overflow-x-hidden"
+  >
+    <!-- Üst menü: core/header.js doldurur -->
+    <div id="app-header" data-active="history"></div>
+
+    <main
+      class="flex-1 w-full max-w-[1920px] px-margin-page pt-24 pb-10 mx-auto flex flex-col gap-container-gap"
+    >
+      <!-- Başlık -->
+      <section
+        class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+      >
+        <div>
+          <h1
+            class="font-headline-lg text-headline-lg text-on-surface tracking-tight flex items-center gap-3"
+          >
+            <span data-i18n="history.title">Test Geçmişi</span>
+            <span
+              id="history-total-badge"
+              class="font-data-md text-[11px] px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant border border-border-subtle uppercase"
+              >—</span
+            >
+          </h1>
+          <p
+            class="font-body-md text-body-md text-on-surface-variant mt-1"
+            data-i18n="history.subtitle"
+          ></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- Veritabanını temizle: tüm testleri siler, "SİL" yazdırarak onay alır -->
+          <button
+            type="button"
+            id="clear-db-btn"
+            class="px-4 py-2 border border-signal-error/60 text-signal-error font-label-caps text-label-caps rounded flex items-center gap-2 hover:bg-signal-error/10 transition-colors"
+          >
+            <span class="material-symbols-outlined text-[16px]"
+              >delete_sweep</span
+            >
+            <span data-i18n="clearDb.button">Veritabanını Temizle</span>
+          </button>
+          <a
+            href="/"
+            class="px-4 py-2 bg-primary-container text-on-primary-container font-label-caps text-label-caps font-bold rounded flex items-center gap-2 hover:opacity-90 transition-opacity"
+          >
+            <span class="material-symbols-outlined text-[18px]">bolt</span>
+            <span data-i18n="history.newTest">Yeni Test Başlat</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Arama, filtre, sıralama -->
+      <section class="flex flex-col md:flex-row gap-4 w-full">
+        <div class="flex-1 relative glow-effect rounded">
+          <div
+            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"
+          >
+            <span
+              class="material-symbols-outlined text-on-surface-variant text-[18px]"
+              >search</span
+            >
+          </div>
+          <input
+            id="history-search"
+            type="text"
+            autocomplete="off"
+            data-i18n-placeholder="history.searchPlaceholder"
+            class="w-full bg-surface-container-lowest border border-border-subtle text-on-surface font-data-md text-data-md rounded py-2 pl-10 pr-4 focus:outline-none focus:ring-0 transition-colors placeholder:text-on-surface-variant/50"
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <div
+            class="flex bg-surface-container-lowest border border-border-subtle rounded p-0.5"
+          >
+            <button
+              type="button"
+              data-method="ALL"
+              class="px-3 py-1.5 font-label-caps text-[11px] rounded transition-colors"
+              data-i18n="history.filter.all"
+            >
+              Tümü
+            </button>
+            <button
+              type="button"
+              data-method="GET"
+              class="px-3 py-1.5 font-label-caps text-[11px] rounded transition-colors"
+            >
+              GET
+            </button>
+            <button
+              type="button"
+              data-method="POST"
+              class="px-3 py-1.5 font-label-caps text-[11px] rounded transition-colors"
+            >
+              POST
+            </button>
+          </div>
+          <!-- Sıralama: açılır menü -->
+          <div id="history-sort" class="relative">
+            <button
+              type="button"
+              id="history-sort-toggle"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              class="flex items-center gap-1.5 bg-surface-container-lowest border border-border-subtle px-3 py-1.5 rounded text-on-surface-variant hover:text-on-surface font-label-caps text-[11px] transition-colors whitespace-nowrap"
+            >
+              <span class="material-symbols-outlined text-[15px]">sort</span>
+              <span id="history-sort-label"></span>
+              <span
+                id="history-sort-arrow"
+                class="material-symbols-outlined text-[16px] transition-transform duration-150"
+                >expand_more</span
+              >
+            </button>
+            <div
+              id="history-sort-menu"
+              hidden
+              role="listbox"
+              class="absolute right-0 top-full mt-1 min-w-full z-30 bg-surface-container-lowest border border-border-subtle rounded shadow-lg py-1 flex flex-col"
+            ></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tablo -->
+      <section
+        class="w-full border border-border-subtle rounded bg-surface-container-lowest overflow-hidden"
+      >
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead
+              class="bg-surface-container border-b border-border-subtle font-label-caps text-label-caps text-on-surface-variant tracking-wider"
+            >
+              <tr>
+                <th class="py-3 px-4 uppercase" data-i18n="history.col.date">
+                  Tarih / Saat
+                </th>
+                <th class="py-3 px-4 uppercase" data-i18n="history.col.url">
+                  Hedef URL
+                </th>
+                <th
+                  class="py-3 px-4 uppercase text-center"
+                  data-i18n="history.col.method"
+                >
+                  Yöntem
+                </th>
+                <th
+                  class="py-3 px-4 uppercase text-right"
+                  data-i18n="history.col.avg"
+                >
+                  Ort. Gecikme
+                </th>
+                <th
+                  class="py-3 px-4 uppercase text-right"
+                  data-i18n="history.col.rps"
+                >
+                  Gerçekleşen RPS
+                </th>
+                <th
+                  class="py-3 px-4 uppercase text-right"
+                  data-i18n="history.col.duration"
+                >
+                  Süre
+                </th>
+                <th
+                  class="py-3 px-4 uppercase text-center"
+                  data-i18n="history.col.status"
+                >
+                  Durum
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              id="history-body"
+              class="font-data-md text-data-md text-on-surface divide-y divide-border-subtle"
+            ></tbody>
+          </table>
+        </div>
+
+        <!-- Sayfalama -->
+        <div
+          class="bg-surface-container-low border-t border-border-subtle px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3"
+        >
+          <span
+            id="history-range"
+            class="font-data-md text-[13px] text-on-surface-variant"
+            >—</span
+          >
+          <div id="history-pages" class="flex items-center gap-1.5"></div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/js/pages/history.js"></script>
+  </body>
+</html>

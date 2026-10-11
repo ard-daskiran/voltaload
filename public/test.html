@@ -1,0 +1,649 @@
+<!doctype html>
+<html class="dark" lang="tr" translate="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="google" content="notranslate" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title data-i18n="detail.pageTitle">Volta — Test Detayı</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/js/tailwind-config.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+      body {
+        background-color: #0b0e14;
+        color: #e1e2eb;
+      }
+      .tech-grid {
+        background-image: radial-gradient(#30363d 1px, transparent 1px);
+        background-size: 20px 20px;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen font-body-md text-body-md overflow-x-hidden">
+    <!-- Üst menü: core/header.js doldurur -->
+    <div id="app-header" data-active="history"></div>
+
+    <!-- Test bulunamadı / yüklenemedi: ekranın ortasında küçük bir kart -->
+    <div
+      id="detail-error"
+      hidden
+      class="min-h-screen pt-16 px-margin-page flex items-center justify-center"
+    >
+      <div
+        class="w-full max-w-md border border-border-subtle bg-surface-container-lowest p-8 flex flex-col items-center text-center gap-4 relative"
+      >
+        <div class="absolute top-0 left-0 w-full h-1 bg-border-subtle"></div>
+        <span
+          id="detail-error-icon"
+          class="material-symbols-outlined text-[48px] text-outline"
+          >search_off</span
+        >
+        <h2
+          id="detail-error-title"
+          class="font-headline-md text-headline-md text-on-surface"
+        ></h2>
+        <p
+          id="detail-error-text"
+          class="font-body-md text-body-md text-on-surface-variant"
+        ></p>
+        <a
+          href="/history.html"
+          data-history-link
+          class="mt-2 border border-secondary text-secondary font-label-caps text-label-caps px-4 py-2 hover:bg-secondary/10 transition-colors flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+          <span data-i18n="detail.backToHistory">GEÇMİŞE DÖN</span>
+        </a>
+      </div>
+    </div>
+
+    <main
+      id="detail-main"
+      class="pt-20 pb-10 px-margin-page max-w-[1920px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-gutter"
+    >
+      <!-- Sol sütun: geri dönüş, rapor ve silme; altında test ayarları ve analiz -->
+      <section class="lg:col-span-3 flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-3">
+          <a
+            href="/history.html"
+            data-history-link
+            class="flex items-center gap-1 font-data-md text-[13px] text-on-surface-variant hover:text-primary transition-colors"
+          >
+            <span class="material-symbols-outlined text-[18px]"
+              >arrow_back</span
+            >
+            <span data-i18n="detail.back">Geçmiş</span>
+          </a>
+
+          <div class="flex items-center gap-2">
+            <!-- Rapor: yeni sekmede açılır. Test yüklenince aktif olur. -->
+            <a
+              id="report-btn"
+              href="#"
+              target="_blank"
+              rel="noopener"
+              class="h-8 flex items-center gap-1.5 border border-secondary/60 text-secondary font-label-caps text-[11px] px-3 rounded hover:bg-secondary/10 transition-colors opacity-40 pointer-events-none"
+            >
+              <span class="material-symbols-outlined text-[16px]"
+                >description</span
+              >
+              <span data-i18n="report.button">RAPOR AL</span>
+            </a>
+
+            <!-- Testi sil: sadece simge, ipucu üzerine gelince -->
+            <button
+              type="button"
+              id="delete-btn"
+              disabled
+              data-i18n-title="deleteTest.button"
+              class="h-8 w-8 flex items-center justify-center border border-signal-error/60 text-signal-error rounded hover:bg-signal-error/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            >
+              <span class="material-symbols-outlined text-[18px] block"
+                >delete</span
+              >
+            </button>
+          </div>
+        </div>
+
+        <!-- Test ayarları -->
+        <div
+          class="border border-border-subtle bg-surface-container-lowest p-5 flex flex-col gap-4 relative"
+        >
+          <div class="absolute top-0 left-0 w-full h-1 bg-border-subtle"></div>
+
+          <h2
+            class="font-label-caps text-label-caps text-on-surface-variant uppercase mt-1"
+            data-i18n="detail.settings"
+          >
+            Test Ayarları
+          </h2>
+
+          <!-- Hedef: rehberde kayıtlıysa üstte isim, altında küçük URL -->
+          <div class="flex flex-col gap-1">
+            <span
+              class="font-data-md text-[12px] text-outline"
+              data-i18n="form.url"
+              >Hedef URL</span
+            >
+            <span
+              id="d-target-name"
+              hidden
+              class="font-data-md text-data-md text-on-surface font-semibold"
+            ></span>
+            <span
+              id="d-url"
+              class="font-data-md text-data-md text-on-surface break-all"
+              >—</span
+            >
+          </div>
+
+          <!-- Diğer ayarlar (etiketler tek satırda kalır) -->
+          <dl class="flex flex-col gap-2.5 font-data-md text-data-md">
+            <div class="flex justify-between gap-3">
+              <dt
+                class="text-outline whitespace-nowrap"
+                data-i18n="form.method"
+              >
+                Yöntem
+              </dt>
+              <dd id="d-method" class="text-on-surface text-right">—</dd>
+            </div>
+            <div class="flex justify-between gap-3">
+              <dt
+                class="text-outline whitespace-nowrap"
+                data-i18n="form.profile"
+              >
+                Test Türü
+              </dt>
+              <dd id="d-profile" class="text-on-surface text-right">—</dd>
+            </div>
+            <div class="flex justify-between gap-3">
+              <dt
+                id="d-target-rps-label"
+                class="text-outline whitespace-nowrap"
+                data-i18n="detail.targetRps"
+              >
+                Hedef RPS
+              </dt>
+              <dd id="d-target-rps" class="text-on-surface text-right">—</dd>
+            </div>
+            <div class="flex justify-between gap-3">
+              <dt
+                class="text-outline whitespace-nowrap"
+                data-i18n="detail.duration"
+              >
+                Süre
+              </dt>
+              <dd id="d-duration" class="text-on-surface text-right">—</dd>
+            </div>
+            <div class="flex justify-between gap-3">
+              <dt
+                class="text-outline whitespace-nowrap"
+                data-i18n="detail.status"
+              >
+                Durum
+              </dt>
+              <dd id="d-status" class="flex items-center gap-2">—</dd>
+            </div>
+            <div class="flex justify-between gap-3">
+              <dt
+                class="text-outline whitespace-nowrap"
+                data-i18n="detail.date"
+              >
+                Tarih
+              </dt>
+              <dd id="d-date" class="text-on-surface text-right">—</dd>
+            </div>
+          </dl>
+
+          <!-- JSON Body (sadece doluysa) -->
+          <div id="d-body-block" hidden class="flex flex-col gap-2">
+            <span
+              class="font-data-md text-[12px] text-outline"
+              data-i18n="form.body"
+              >JSON Body</span
+            >
+            <pre
+              id="d-body"
+              class="max-h-40 overflow-auto border border-border-subtle p-3 font-data-md text-[12px] text-secondary leading-relaxed whitespace-pre-wrap break-all"
+            ></pre>
+          </div>
+
+          <button
+            type="button"
+            id="rerun-btn"
+            class="w-full bg-primary-container text-[#000000] font-label-caps text-label-caps py-3 mt-2 hover:bg-primary transition-colors duration-200 flex items-center justify-center gap-2"
+          >
+            <span class="material-symbols-outlined text-[18px]">replay</span>
+            <span data-i18n="detail.rerun">YENİDEN ÇALIŞTIR</span>
+          </button>
+        </div>
+
+        <!-- Analiz kartı: içeriği detail/analysis-card.js doldurur -->
+        <div
+          class="border border-border-subtle bg-surface-container-lowest p-5 flex flex-col gap-4 relative"
+        >
+          <div class="absolute top-0 left-0 w-full h-1 bg-border-subtle"></div>
+
+          <h2
+            class="font-label-caps text-label-caps text-on-surface-variant uppercase mt-1"
+            data-i18n="analysis.title"
+          >
+            Analiz
+          </h2>
+
+          <div id="analysis-content" class="flex flex-col gap-4"></div>
+
+          <div
+            id="analysis-footer"
+            hidden
+            class="flex items-end justify-between gap-3 pt-3 border-t border-border-subtle"
+          >
+            <div
+              data-hint="analysisDisclaimer"
+              data-hint-position="above"
+              class="font-data-md text-[11px] leading-snug text-outline"
+            >
+              <span data-hint-label data-i18n="analysis.disclaimer"></span>
+            </div>
+            <button
+              type="button"
+              id="analysis-recs-btn"
+              hidden
+              class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 border border-secondary text-secondary font-label-caps text-[11px] rounded hover:bg-secondary/10 transition-colors"
+            >
+              <span id="analysis-recs-label"></span>
+              <span class="material-symbols-outlined text-[16px]"
+                >arrow_forward</span
+              >
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sağ sütun -->
+      <section class="lg:col-span-9 flex flex-col gap-4">
+        <!-- Hâlâ çalışan test bilgisi -->
+        <div
+          id="running-notice"
+          hidden
+          class="flex items-center gap-2 border border-primary-container/50 bg-primary-container/10 px-3 py-2 text-primary-container font-data-md text-[13px]"
+        >
+          <span class="material-symbols-outlined text-[18px]">info</span>
+          <span data-i18n="detail.running"
+            >Bu test hâlâ çalışıyor. Canlı izlemek için</span
+          >
+          <a
+            href="/"
+            class="underline hover:text-primary"
+            data-i18n="detail.runningLink"
+            >anasayfaya git</a
+          >
+        </div>
+
+        <!-- Yönlendirme uyarısı: cevapların en az yarısı 3xx ise -->
+        <div
+          id="redirect-notice"
+          hidden
+          class="flex items-start gap-2 border border-primary-container/50 bg-primary-container/10 px-3 py-2 text-primary-container font-data-md text-[13px] leading-snug"
+        >
+          <span class="material-symbols-outlined text-[18px] shrink-0"
+            >alt_route</span
+          >
+          <span id="redirect-notice-text"></span>
+        </div>
+
+        <!-- Grafik kartı -->
+        <div
+          class="border border-border-subtle bg-surface-container-lowest p-5 flex flex-col"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex flex-wrap items-center gap-3">
+              <h2
+                class="font-headline-md text-headline-md text-on-surface"
+                data-i18n="detail.chartTitle"
+              >
+                Test Grafiği
+              </h2>
+
+              <!-- Nasıl okunur? -->
+              <span class="group relative inline-flex">
+                <span
+                  class="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-primary cursor-help"
+                  >help</span
+                >
+                <div
+                  class="pointer-events-none absolute top-full left-0 mt-2 w-[360px] bg-surface-container-lowest border border-border-subtle p-3 text-[12px] leading-relaxed text-on-surface opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-30 shadow-lg flex flex-col gap-1.5"
+                >
+                  <p data-i18n="chart.help.healthy"></p>
+                  <p data-i18n="chart.help.queue"></p>
+                  <p data-i18n="chart.help.capacity"></p>
+                  <p data-i18n="chart.help.errors"></p>
+                  <p data-i18n="chart.help.warmup"></p>
+                  <p class="text-outline" data-i18n="chart.help.controls"></p>
+                </div>
+              </span>
+            </div>
+
+            <button
+              type="button"
+              id="zoom-reset"
+              class="border border-secondary text-secondary font-label-caps text-label-caps px-4 py-2 hover:bg-secondary/10 transition-colors flex items-center gap-2"
+            >
+              <span class="material-symbols-outlined text-[16px]"
+                >zoom_out_map</span
+              >
+              <span data-i18n="chart.reset">SIFIRLA</span>
+            </button>
+          </div>
+
+          <!-- Açıklama satırı -->
+          <div
+            class="flex flex-wrap items-center gap-5 mb-3 font-data-md text-[12px] text-on-surface"
+          >
+            <button
+              type="button"
+              data-series="0"
+              class="flex items-center gap-2 hover:text-primary transition-opacity"
+            >
+              <span class="w-4 h-0.5 bg-primary-container"></span
+              ><span data-i18n="chart.series.avg">Ortalama</span>
+            </button>
+            <button
+              type="button"
+              data-series="1"
+              class="flex items-center gap-2 hover:text-primary transition-opacity"
+            >
+              <span class="w-4 h-0.5 bg-secondary"></span
+              ><span data-i18n="chart.series.p95">p95</span>
+            </button>
+            <button
+              type="button"
+              data-series="2"
+              class="flex items-center gap-2 hover:text-primary transition-opacity"
+            >
+              <span class="w-4 h-0.5" style="background: #c4b5fd"></span
+              ><span data-i18n="chart.series.p99">p99</span>
+            </button>
+            <button
+              type="button"
+              data-series="3"
+              class="flex items-center gap-2 hover:text-primary transition-opacity"
+            >
+              <span class="w-4 h-0.5 bg-outline"></span
+              ><span data-i18n="chart.series.completedRps">Başarılı RPS</span>
+            </button>
+            <button
+              type="button"
+              data-series="4"
+              class="flex items-center gap-2 hover:text-primary transition-opacity"
+            >
+              <span class="w-4 border-t border-dashed border-on-surface"></span
+              ><span data-i18n="chart.series.sentRps">Gönderilen RPS</span>
+            </button>
+          </div>
+
+          <div class="h-[380px] tech-grid border border-border-subtle relative">
+            <canvas id="chart"></canvas>
+            <div
+              id="chart-tooltip"
+              hidden
+              class="pointer-events-none absolute z-20 min-w-[210px] bg-surface-container-lowest/80 border border-border-subtle px-3 py-2 font-data-md text-[12px] flex flex-col gap-1 shadow-lg"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Metrik kartları (tüm testin değerleri, "anlık" satırı yok; data-hint: bilgi kutusu) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div
+            data-hint="avg"
+            data-hint-color="#f4c21a"
+            class="border border-border-subtle bg-surface-container-lowest p-4 relative group"
+          >
+            <div
+              class="absolute top-0 left-0 w-1 h-full bg-border-subtle group-hover:bg-primary-container transition-colors"
+            ></div>
+            <div
+              class="font-label-caps text-label-caps text-on-surface-variant mb-1"
+            >
+              <span data-hint-label data-i18n="metric.avg">ORTALAMA</span>
+            </div>
+            <div class="font-headline-lg text-headline-lg text-secondary">
+              <span id="m-avg">—</span
+              ><span
+                class="text-data-lg font-data-lg ml-1 text-on-surface-variant"
+                >ms</span
+              >
+            </div>
+          </div>
+          <div
+            data-hint="requests"
+            data-hint-color="#64d8d7"
+            class="border border-border-subtle bg-surface-container-lowest p-4 relative group"
+          >
+            <div
+              class="absolute top-0 left-0 w-1 h-full bg-border-subtle group-hover:bg-secondary transition-colors"
+            ></div>
+            <div
+              class="font-label-caps text-label-caps text-on-surface-variant mb-1"
+            >
+              <span data-hint-label data-i18n="metric.requests">İSTEK</span>
+            </div>
+            <div class="font-headline-lg text-headline-lg text-secondary">
+              <span id="m-count">—</span
+              ><span
+                class="text-data-lg font-data-lg ml-1 text-on-surface-variant"
+                data-i18n="unit.count"
+                >adet</span
+              >
+            </div>
+          </div>
+          <div
+            data-hint="min"
+            data-hint-color="#b5ebff"
+            class="border border-border-subtle bg-surface-container-lowest p-4 relative group"
+          >
+            <div
+              class="absolute top-0 left-0 w-1 h-full bg-border-subtle group-hover:bg-tertiary-fixed transition-colors"
+            ></div>
+            <div
+              class="font-label-caps text-label-caps text-on-surface-variant mb-1"
+            >
+              <span data-hint-label data-i18n="metric.min">EN DÜŞÜK</span>
+            </div>
+            <div class="font-headline-lg text-headline-lg text-secondary">
+              <span id="m-min">—</span
+              ><span
+                class="text-data-lg font-data-lg ml-1 text-on-surface-variant"
+                >ms</span
+              >
+            </div>
+          </div>
+          <div
+            data-hint="max"
+            data-hint-color="#ff5555"
+            data-hint-align="right"
+            class="border border-border-subtle bg-surface-container-lowest p-4 relative group"
+          >
+            <div
+              class="absolute top-0 left-0 w-1 h-full bg-border-subtle group-hover:bg-signal-error transition-colors"
+            ></div>
+            <div
+              class="font-label-caps text-label-caps text-on-surface-variant mb-1"
+            >
+              <span data-hint-label data-i18n="metric.max">EN YÜKSEK</span>
+            </div>
+            <div class="font-headline-lg text-headline-lg text-secondary">
+              <span id="m-max">—</span
+              ><span
+                class="text-data-lg font-data-lg ml-1 text-on-surface-variant"
+                >ms</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Durum kodları ve özet -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <!-- Bilgi kutuları kesilmesin diye bu kartta overflow-hidden yok -->
+          <div
+            class="border border-border-subtle bg-surface-container-lowest p-4 flex flex-col gap-3"
+          >
+            <div class="flex items-baseline justify-between">
+              <h3
+                class="font-label-caps text-label-caps text-on-surface-variant uppercase"
+                data-i18n="statusCard.title"
+              >
+                Durum Kodu Dağılımı
+              </h3>
+              <span
+                id="status-total"
+                class="font-data-md text-[12px] text-outline"
+              ></span>
+            </div>
+            <div
+              id="status-bar"
+              class="flex h-2 gap-px bg-surface-container overflow-hidden"
+            ></div>
+            <p
+              id="status-empty"
+              class="font-data-md text-data-md text-outline"
+              data-i18n="statusCard.empty"
+            >
+              Henüz veri yok.
+            </p>
+            <div id="status-rows" class="flex flex-col gap-2.5"></div>
+          </div>
+
+          <div
+            class="border border-border-subtle bg-surface-container-lowest flex flex-col"
+          >
+            <div
+              class="bg-surface-container p-3 border-b border-border-subtle flex items-center justify-between"
+            >
+              <h3
+                class="font-label-caps text-label-caps text-on-surface-variant uppercase"
+                data-i18n="detail.summary"
+              >
+                Özet
+              </h3>
+              <span
+                class="material-symbols-outlined text-on-surface-variant text-[18px]"
+                >summarize</span
+              >
+            </div>
+            <dl
+              id="summary-list"
+              class="p-4 flex flex-col gap-2.5 font-data-md text-data-md"
+            ></dl>
+            <p
+              id="summary-empty"
+              hidden
+              class="p-4 font-data-md text-data-md text-outline"
+              data-i18n="detail.noSummary"
+            >
+              Bu testte ölçülebilen bir cevap yok.
+            </p>
+          </div>
+        </div>
+
+        <!-- Kademe tablosu (sadece kademeli testlerde): detail/steps-table.js doldurur -->
+        <section
+          id="steps-section"
+          hidden
+          class="border border-border-subtle bg-surface-container-lowest flex flex-col"
+        >
+          <div
+            class="bg-surface-container p-3 border-b border-border-subtle flex items-center justify-between"
+          >
+            <h3
+              class="font-label-caps text-label-caps text-on-surface-variant uppercase"
+              data-i18n="steps.title"
+            >
+              Kademeler
+            </h3>
+            <span
+              class="material-symbols-outlined text-on-surface-variant text-[18px]"
+              >stairs</span
+            >
+          </div>
+          <div class="overflow-x-auto">
+            <table
+              class="w-full text-left border-collapse font-data-md text-data-md"
+            >
+              <thead
+                class="border-b border-border-subtle font-label-caps text-label-caps text-on-surface-variant"
+              >
+                <tr>
+                  <th class="py-2.5 px-4 uppercase" data-i18n="steps.col.step">
+                    Kademe
+                  </th>
+                  <th
+                    class="py-2.5 px-4 uppercase text-right"
+                    data-i18n="steps.col.target"
+                  >
+                    Hedef
+                  </th>
+                  <th
+                    class="py-2.5 px-4 uppercase text-right"
+                    data-i18n="steps.col.actual"
+                  >
+                    Gerçekleşen
+                  </th>
+                  <th
+                    class="py-2.5 px-4 uppercase text-right"
+                    data-i18n="steps.col.avg"
+                  >
+                    Ortalama
+                  </th>
+                  <th
+                    class="py-2.5 px-4 uppercase text-right"
+                    data-i18n="steps.col.p95"
+                  >
+                    p95
+                  </th>
+                  <th
+                    class="py-2.5 px-4 uppercase text-right"
+                    data-i18n="steps.col.errors"
+                  >
+                    Hata
+                  </th>
+                  <th class="py-2.5 px-4 uppercase" data-i18n="steps.col.state">
+                    Durum
+                  </th>
+                </tr>
+              </thead>
+              <tbody
+                id="steps-body"
+                class="divide-y divide-border-subtle"
+              ></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script type="module" src="/js/pages/test-detail.js"></script>
+  </body>
+</html>

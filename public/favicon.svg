@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Koyu, köşeleri hafif yuvarlatılmış zemin (Volta'nın arka plan rengi) -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0b0e14" stroke="#30363d" stroke-width="2" />
+  <!-- Sarı yıldırım (logodaki renk) -->
+  <path d="M37 7 L15 36 H30 L26 57 L49 27 H34 Z" fill="#f4c21a" />
+</svg>

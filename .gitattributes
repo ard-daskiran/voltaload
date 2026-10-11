@@ -1,0 +1,11 @@
+# Bütün metin dosyaları depoda LF satır sonuyla saklanır.
+# Windows'ta çalışırken Git uyarı vermez, projeyi Mac/Linux'ta açan da sorun yaşamaz.
+* text=auto eol=lf
+
+# İkili dosyalar: Git içeriklerine dokunmasın
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.db binary

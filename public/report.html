@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="tr" translate="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="google" content="notranslate" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="report.pageTitle">Volta — Yük Testi Raporu</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Rapor: beyaz kâğıt, A4. Ekranda önizleme, yazdırınca sadece kâğıt.
+         Tailwind kullanılmıyor: yazdırma anında bütün stillerin hazır olması gerekiyor. */
+      :root {
+        --ink: #1b1f24;
+        --muted: #5f6b76;
+        --line: #dfe3e8;
+        --soft: #f5f6f8;
+        --brand: #f4c21a;
+        --mono: "IBM Plex Mono", monospace;
+        --display: "Space Grotesk", sans-serif;
+      }
+
+      @page {
+        size: A4;
+        margin: 14mm 14mm 16mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, sans-serif;
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--ink);
+        background: #e9ecef;
+        /* Renkli alanlar (gösterge, çubuklar) yazdırmada kaybolmasın */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      /* --- Önizleme araç çubuğu (yazdırmada görünmez) --- */
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 24px;
+        background: #0b0e14;
+        color: #e1e2eb;
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .toolbar .hint {
+        color: #9a9079;
+        font-size: 12px;
+      }
+      .toolbar-right {
+        display: flex;
+        gap: 10px;
+      }
+      .btn {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        padding: 8px 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        border: 1px solid transparent;
+      }
+      .btn-primary {
+        background: var(--brand);
+        color: #000;
+      }
+      .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .btn-ghost {
+        border-color: #30363d;
+        color: #e1e2eb;
+      }
+
+      .lang-switch {
+        display: flex;
+        border: 1px solid #30363d;
+        border-radius: 999px;
+        padding: 2px;
+      }
+      .lang-switch button {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #9a9079;
+        cursor: pointer;
+      }
+      .lang-switch button.active {
+        background: var(--brand);
+        color: #000;
+      }
+
+      /* --- Kâğıt --- */
+      .paper {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 24px auto;
+        padding: 14mm;
+        background: #fff;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+        .toolbar {
+          display: none;
+        }
+        .paper {
+          width: auto;
+          min-height: 0;
+          margin: 0;
+          padding: 0;
+          box-shadow: none;
+        }
+      }
+
+      .message {
+        font-family: var(--mono);
+        color: var(--muted);
+        padding: 40px 0;
+        text-align: center;
+      }
+
+      /* --- Bölümler: başlık sayfanın altında yalnız kalmasın, kartlar bölünmesin --- */
+      .section-title {
+        font-family: var(--display);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 6px;
+        margin: 22px 0 12px;
+        break-after: avoid;
+      }
+      .keep {
+        break-inside: avoid;
+      }
+      /* Alt başlıklar (Olaylar, Öneriler, Durum Kodları...): bölüm başlıklarıyla aynı görünüm */
+      .sub-title {
+        font-family: var(--display);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 6px;
+        margin: 18px 0 10px;
+        break-after: avoid;
+      }
+      /* Öneriler: raporun en önemli kısmı, Volta'nın cyan rengiyle öne çıkar */
+      .sub-title.accent {
+        color: #0e8f8e;
+        border-bottom: 2px solid #0e8f8e;
+      }
+
+      /* --- Üst bilgi --- */
+      .report-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        border-bottom: 2px solid var(--ink);
+        padding-bottom: 12px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--mono);
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        font-size: 16px;
+      }
+      .brand svg {
+        width: 18px;
+        height: 18px;
+      }
+      .report-title {
+        font-family: var(--display);
+        font-size: 24px;
+        font-weight: 600;
+        margin: 4px 0 0;
+        letter-spacing: -0.01em;
+      }
+      .header-meta {
+        text-align: right;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .target {
+        margin-top: 14px;
+      }
+      .target-name {
+        font-family: var(--display);
+        font-size: 17px;
+        font-weight: 600;
+      }
+      .target-url {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-all;
+      }
+      .target-meta {
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--ink);
+      }
+
+      /* --- Sonuç: gösterge ve kapasite --- */
+      .result {
+        display: flex;
+        gap: 28px;
+        align-items: flex-end;
+      }
+      .gauge {
+        flex: 1;
+      }
+      .gauge-bar {
+        display: flex;
+        gap: 3px;
+        height: 12px;
+      }
+      .gauge-bar div {
+        flex: 1;
+        border-radius: 2px;
+      }
+      .gauge-labels,
+      .gauge-marks {
+        display: flex;
+        gap: 3px;
+      }
+      .gauge-labels div,
+      .gauge-marks div {
+        flex: 1;
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .gauge-marks div {
+        font-size: 14px;
+        line-height: 1;
+        height: 16px;
+      }
+      .capacity {
+        text-align: right;
+        min-width: 170px;
+      }
+      .capacity-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .capacity-number {
+        font-family: var(--display);
+        font-size: 34px;
+        font-weight: 600;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+      .verdict {
+        margin-top: 12px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .warning {
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: #b07d00;
+      }
+
+      /* --- Ana ölçümler --- */
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+      }
+      .metric {
+        padding: 10px 12px;
+        border-right: 1px solid var(--line);
+      }
+      .metric:last-child {
+        border-right: none;
+      }
+      .metric-label {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .metric-value {
+        font-family: var(--mono);
+        font-size: 15px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      /* --- Grafik --- */
+      .chart-box {
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 10px 12px 6px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        margin-bottom: 6px;
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .legend i {
+        display: inline-block;
+        width: 14px;
+        height: 2px;
+      }
+      .legend i.dashed {
+        height: 0;
+        border-top: 1.5px dashed #6b7280;
+      }
+
+      /* --- Tablolar --- */
+      table.data {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+      table.data th {
+        text-align: left;
+        font-size: 9.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1.5px solid var(--ink);
+        padding: 6px 8px;
+      }
+      table.data td {
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      table.data .num {
+        text-align: right;
+        white-space: nowrap;
+      }
+      table.data thead {
+        display: table-header-group; /* Tablo sayfa değiştirirse başlık tekrar edilir */
+      }
+      table.data tr {
+        break-inside: avoid;
+      }
+
+      /* --- Öneriler --- */
+      .rec {
+        display: flex;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--line);
+        break-inside: avoid;
+      }
+      .rec-bar {
+        width: 3px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+      .rec-title {
+        font-weight: 600;
+      }
+      .rec-text {
+        color: var(--muted);
+      }
+      .rec-test {
+        margin-top: 4px;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      /* --- Ayarlar --- */
+      .kv {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 4px 16px;
+        font-size: 12px;
+      }
+      .kv dt {
+        color: var(--muted);
+      }
+      .kv dd {
+        margin: 0;
+        font-family: var(--mono);
+        word-break: break-all;
+      }
+      pre.body {
+        margin: 8px 0 0;
+        padding: 8px 10px;
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 11px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      /* --- Terimler ve uyarı --- */
+      /* Terimler: üç sütunlu kartlar. Başlığın altındaki çizgi, grafikteki rengiyle aynı. */
+      .glossary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .term {
+        background: var(--soft);
+        border-radius: 4px;
+        padding: 10px 12px;
+        break-inside: avoid;
+      }
+      .term-title {
+        display: inline-block;
+        font-weight: 700;
+        font-size: 12.5px;
+        padding-bottom: 3px;
+        margin-bottom: 6px;
+        border-bottom: 2px solid var(--ink);
+      }
+      .term-text {
+        margin: 0;
+        font-size: 11px;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+      .disclaimer {
+        margin-top: 18px;
+        padding: 10px 12px;
+        background: var(--soft);
+        border-left: 3px solid #b07d00;
+        font-size: 11.5px;
+        break-inside: avoid;
+      }
+      .disclaimer strong {
+        display: block;
+        margin-bottom: 2px;
+      }
+      .footer {
+        margin-top: 24px;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Önizleme araç çubuğu: yazdırmada görünmez -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <strong data-i18n="report.toolbar">Rapor önizlemesi</strong>
+        <span class="hint" data-i18n="report.printHint"></span>
+      </div>
+      <div class="toolbar-right">
+        <div class="lang-switch">
+          <button type="button" data-lang="tr">TR</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+        <a id="report-back" class="btn btn-ghost" data-i18n="report.back"
+          >TESTE DÖN</a
+        >
+        <button
+          id="report-print"
+          class="btn btn-primary"
+          disabled
+          data-i18n="report.savePdf"
+        >
+          PDF OLARAK KAYDET
+        </button>
+      </div>
+    </div>
+
+    <main class="paper">
+      <div id="report">
+        <p class="message" data-i18n="report.loading">Rapor hazırlanıyor...</p>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script type="module" src="/js/pages/report.js"></script>
+  </body>
+</html>

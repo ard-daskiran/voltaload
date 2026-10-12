@@ -1,4 +1,5 @@
 import { prisma } from "../db/prisma.js";
+import { percentileIndex } from "./windowStats.js";
 
 // Gecikme hesaplarına giren satırlar: cevap gelenler + TIMEOUT'lar.
 // Bağlantı hataları anında döndüğü için ortalamayı yapay olarak düşürür, hariç tutulur.
@@ -70,7 +71,7 @@ export async function computeTestSummary(testRunId: string): Promise<TestSummary
   async function percentile(p: number): Promise<number | null> {
     if (latencyCount === 0) return null;
 
-    const offset = Math.min(latencyCount - 1, Math.floor(latencyCount * p));
+    const offset = percentileIndex(latencyCount, p);
     const row = await prisma.testResult.findFirst({
       where: latencyWhere(testRunId),
       orderBy: { responseTime: "asc" },

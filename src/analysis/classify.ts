@@ -145,7 +145,7 @@ export function classifyGroup(seconds: SecondStats[], baseline: Baseline): Class
 
   // 1. Hata oranı
   const e = T.errorRate;
-  if (stats.errorRate > e.collapsed) raise("COLLAPSED", "errors");
+  if (stats.errorRate >= e.collapsed) raise("COLLAPSED", "errors");
   else if (stats.errorRate >= e.strained) raise("STRAINED", "errors");
   else if (stats.errorRate >= e.borderline) raise("BORDERLINE", "errors");
 
@@ -162,8 +162,8 @@ export function classifyGroup(seconds: SecondStats[], baseline: Baseline): Class
   if (stats.p95 !== null) {
     const limits = latencyLimits(baseline);
     if (limits) {
-      if (stats.p95 > limits.strained) raise("STRAINED", "latencyRelative");
-      else if (stats.p95 > limits.borderline) raise("BORDERLINE", "latencyRelative");
+      if (stats.p95 >= limits.strained) raise("STRAINED", "latencyRelative");
+      else if (stats.p95 >= limits.borderline) raise("BORDERLINE", "latencyRelative");
     }
 
     if (stats.p95 >= T.absolute.strainedMs) raise("STRAINED", "latencyAbsolute");

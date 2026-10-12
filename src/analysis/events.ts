@@ -80,7 +80,7 @@ export function buildEvents(
   if (limits) {
     const i = firstSustained(seconds, (s) => {
       const p95 = percentile(s.latencies, 0.95);
-      return p95 !== null && p95 > limits.borderline;
+      return p95 !== null && p95 >= limits.borderline;
     });
     if (i >= 0) {
       events.push({

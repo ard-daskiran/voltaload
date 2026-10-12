@@ -2,7 +2,7 @@
 // Saniyeler testin başlangıcından sayılır (grafik ve özetle aynı başlangıç).
 // Hiç cevap gelmeyen saniyeler de listede yer alır (sunucu kilitlenmiş olabilir).
 
-import { isLatencySample, isServerError, isConnectionError } from "../engine/windowStats.js";
+import { isLatencySample, isServerError, isConnectionError, percentileOf } from "../engine/windowStats.js";
 import { requestsBetween, type LoadProfile } from "../engine/scheduler.js";
 
 export interface ResultRow {
@@ -25,9 +25,9 @@ export interface SecondStats {
   latencies: number[]; // Sıralı (bağlantı hataları hariç)
 }
 
+// Yüzdelik: özet ve canlı dilimlerle aynı hesap (windowStats.ts)
 export function percentile(sorted: number[], p: number): number | null {
-  if (sorted.length === 0) return null;
-  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
+  return percentileOf(sorted, p);
 }
 
 // Ortanca: tek bir sıçrama ortalamayı bozar, ortancayı bozmaz

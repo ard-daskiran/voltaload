@@ -25,6 +25,17 @@ export function isConnectionError(r: { errorType: string | null }): boolean {
   return r.errorType !== null && r.errorType !== "TIMEOUT";
 }
 
+// Yüzdelik ("en yakın sıra" tanımı): sıralı n değerde p'lik değer, ⌈n × p⌉. sıradaki değerdir.
+// (100 değerde p95 = 95. değer.) Özet, canlı dilimler ve analiz aynı hesabı kullanır.
+export function percentileIndex(count: number, p: number): number {
+  // Küçük pay: 0,95 × 60 gibi çarpımlar kayan nokta yüzünden 57,0000001 çıkıp bir üst sıraya atlamasın
+  return Math.min(count - 1, Math.max(0, Math.ceil(count * p - 1e-9) - 1));
+}
+
+export function percentileOf(sorted: number[], p: number): number | null {
+  return sorted.length > 0 ? sorted[percentileIndex(sorted.length, p)] : null;
+}
+
 export function summarizeWindow(items: ResultLike[]) {
   const latencies = items
     .filter(isLatencySample)
@@ -50,7 +61,6 @@ export function summarizeWindow(items: ResultLike[]) {
 
   const n = latencies.length;
   const hasLatency = n > 0;
-  const percentileOf = (p: number) => latencies[Math.min(n - 1, Math.floor(n * p))];
 
   return {
     requestCount: items.length,
@@ -59,8 +69,8 @@ export function summarizeWindow(items: ResultLike[]) {
     avgResponseTime: hasLatency ? latencies.reduce((a, b) => a + b, 0) / n : null,
     minResponseTime: hasLatency ? latencies[0] : null,
     maxResponseTime: hasLatency ? latencies[n - 1] : null,
-    p95ResponseTime: hasLatency ? percentileOf(0.95) : null,
-    p99ResponseTime: hasLatency ? percentileOf(0.99) : null,
+    p95ResponseTime: percentileOf(latencies, 0.95),
+    p99ResponseTime: percentileOf(latencies, 0.99),
     statusCounts,
     errorCount,
     connectionErrorCount,

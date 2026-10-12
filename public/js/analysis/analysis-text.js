@@ -73,7 +73,11 @@ function baseSentence(analysis, isStepped) {
         return steppedSentence(steps);
     }
 
-    return t(c.kind === "atLeast" ? "verdict.atLeastConstant" : "verdict.belowConstant", { rps });
+    // Kapasiteye sayıldı ama gecikme arttıysa ("Sınırda") "sorunsuz" denmez
+    if (c.kind === "atLeast") {
+        return t(verdict.state === "HEALTHY" ? "verdict.atLeastConstant" : "verdict.atLeastConstantSlower", { rps });
+    }
+    return t("verdict.belowConstant", { rps });
 }
 
 // Sonuç cümlesi
@@ -142,10 +146,12 @@ const REC_STYLE = {
     tailLatency: { icon: "timeline", tone: "warning" },
     clientErrors: { icon: "rule", tone: "warning" },
     redirects: { icon: "alt_route", tone: "warning" },
+    rateLimited: { icon: "front_hand", tone: "warning" },
     slowButStable: { icon: "speed", tone: "warning" },
     lowSample: { icon: "info", tone: "warning" },
     narrowCapacity: { icon: "my_location", tone: "action" },
     findCapacity: { icon: "my_location", tone: "action" },
+    nearLimit: { icon: "my_location", tone: "action" },
     noLimitFound: { icon: "trending_up", tone: "action" },
 };
 

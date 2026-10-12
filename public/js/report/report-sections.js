@@ -150,6 +150,7 @@ function resultSection(analysis, testRun) {
         analysis.stopped && t(`analysis.ended.${analysis.endReason}`),
         recTypes.includes("redirects") && t("analysis.redirectsNotice"),
         recTypes.includes("clientErrors") && t("analysis.clientErrorsNotice"),
+        recTypes.includes("rateLimited") && t("analysis.rateLimitedNotice"),
     ].filter(Boolean);
 
     return h(

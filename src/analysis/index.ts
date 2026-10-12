@@ -9,9 +9,17 @@ import { buildSeconds, type SecondStats } from "./seconds.js";
 import { aggregate, classifyGroup } from "./classify.js";
 import { findBaseline, type Baseline } from "./baseline.js";
 import { stepRanges, analyzeSteps } from "./steps.js";
-import { buildEvents, type AnalysisEvent } from "./events.js";
+import { buildEvents, type AnalysisEvent, type EndEventType } from "./events.js";
 import { buildVerdict, type Outage } from "./verdict.js";
 import { buildRecommendations } from "./recommendations.js";
+
+// Testin nasıl bittiği → olay listesinin son satırı
+const END_EVENTS: Record<string, EndEventType> = {
+  COMPLETED: "end",
+  STOPPED: "stopped",
+  INTERRUPTED: "interrupted",
+  FAILED: "failed",
+};
 
 // Bağlantı koptuysa ve öncesinde sunucu sağlıklıysa: kesinti.
 // Kapasite yine temkinli kalır, sadece cümle "o ana kadar karşıladı, sonra koptu" der.
@@ -43,14 +51,18 @@ export async function analyzeTestRun(id: string) {
   const profile = profileOf(testRun);
   const stopped = testRun.status !== "COMPLETED";
 
-  // Durdurulan ya da yarıda kalan testte sadece durana kadarki saniyeler analiz edilir.
-  // Yoksa durduktan sonraki "cevapsız" saniyeler, sunucu çökmüş gibi görünür.
-    // Saniyeler testin başlangıcından sayılır. Eski testlerde başlangıç kaydı yok, ilk cevaptan sayılır.
+  // Saniyeler testin başlangıcından sayılır. Eski testlerde başlangıç kaydı yok, ilk cevaptan sayılır.
   const origin = testRun.startedAt?.getTime() ?? rows[0].timestamp.getTime();
 
+  // Durdurulan, yarıda kalan ya da hatayla biten testte sadece o ana kadarki saniyeler analiz edilir.
+  // Yoksa durduktan sonraki "cevapsız" saniyeler, sunucu çökmüş gibi görünür.
+  // Yarıda kalan testte bitiş anı son kaydedilen sonuçtur: eski kayıtlarda bitiş anı olarak
+  // Volta'nın yeniden açıldığı an yazılmış olabilir.
   let effectiveDuration = testRun.duration;
-  if (stopped && testRun.finishedAt) {
-    const stoppedAt = Math.floor((testRun.finishedAt.getTime() - origin) / 1000);
+  if (stopped) {
+    const endTime =
+      testRun.status === "INTERRUPTED" || !testRun.finishedAt ? rows[rows.length - 1].timestamp : testRun.finishedAt;
+    const stoppedAt = Math.floor((endTime.getTime() - origin) / 1000);
     effectiveDuration = Math.max(1, Math.min(testRun.duration, stoppedAt));
   }
 
@@ -72,13 +84,15 @@ export async function analyzeTestRun(id: string) {
   const steps = analyzeSteps(seconds, ranges, baseline);
   if (steps.length === 0) return { status: "empty" as const };
 
-  const events = buildEvents(seconds, ranges, steps, baseline, profile.type === "STEPPED", endSecond, stopped);
+  const endEvent = END_EVENTS[testRun.status] ?? "end";
+  const events = buildEvents(seconds, ranges, steps, baseline, profile.type === "STEPPED", endSecond, endEvent);
   const verdict = buildVerdict(steps, baseline, findOutage(seconds, events, baseline));
   const recommendations = buildRecommendations(aggregate(seconds), verdict);
 
   return {
     status: "ready" as const,
     stopped,
+    endReason: testRun.status, // STOPPED / INTERRUPTED / FAILED: arayüz uyarı metnini buna göre seçer
     verdict,
     baseline,
     voltaOverloaded: testRun.maxLagMs !== null && testRun.maxLagMs > WORKER_LAG_WARNING_MS,

@@ -8,18 +8,24 @@ import { aggregate } from "./classify.js";
 
 export interface Baseline {
   valid: boolean;
+  measured: boolean; // Sağlıklı seviye için ölçülebilir saniye var mıydı (yoksa sunucuya baştan bağlanılamadı)
   p95: number | null;
 }
 
 // limitIndex: bu saniyeden öncesine bak (kademeli testte ilk kademenin sonu)
 export function findBaseline(seconds: SecondStats[], limitIndex: number): Baseline {
-  const inRange = seconds.filter((s) => s.index < limitIndex && s.latencies.length > 0);
+  // Bağlantı hatası olan saniyeler alınmaz: o saniyelerde sunucu yavaş değil, hiç yok.
+  // (Sunucu ilk saniyelerde kapanırsa "baştan zorlandı" denmesin, kopma kendi olayıyla anlatılır.)
+  const inRange = seconds.filter(
+    (s) =>
+      s.index < limitIndex && s.latencies.length > 0 && s.connectionErrors / s.total < T.connectionErrorRate
+  );
 
   // Isınma saniyesi atlanır. İlk kademe çok kısaysa (örneğin 2,5 sn) geriye tek saniye kalabilir,
   // o zaman tek saniyeyle yetinilir. Hiç kalmazsa ısınma saniyesi de kullanılır.
   let candidates = inRange.filter((s) => s.index >= T.warmupSeconds).slice(0, T.baselineSeconds);
   if (candidates.length === 0) candidates = inRange.slice(0, T.baselineSeconds);
-  if (candidates.length === 0) return { valid: false, p95: null };
+  if (candidates.length === 0) return { valid: false, measured: false, p95: null };
 
   const p95 = median(candidates.map((s) => percentile(s.latencies, 0.95)!))!;
   const stats = aggregate(candidates);
@@ -30,5 +36,5 @@ export function findBaseline(seconds: SecondStats[], limitIndex: number): Baseli
     stats.throughputRatio >= T.throughput.borderline &&
     p95 < T.absolute.borderlineMs;
 
-  return { valid: healthy, p95: Math.round(p95) };
+  return { valid: healthy, measured: true, p95: Math.round(p95) };
 }

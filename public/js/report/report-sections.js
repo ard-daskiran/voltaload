@@ -147,7 +147,7 @@ function resultSection(analysis, testRun) {
     const recTypes = analysis.recommendations.map((r) => r.type);
     const warnings = [
         analysis.voltaOverloaded && t("analysis.voltaOverloaded"),
-        analysis.stopped && t("analysis.stopped"),
+        analysis.stopped && t(`analysis.ended.${analysis.endReason}`),
         recTypes.includes("redirects") && t("analysis.redirectsNotice"),
         recTypes.includes("clientErrors") && t("analysis.clientErrorsNotice"),
     ].filter(Boolean);

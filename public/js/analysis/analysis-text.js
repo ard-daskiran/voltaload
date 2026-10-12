@@ -120,6 +120,8 @@ export function eventColor(e) {
         case "latencyRise":
         case "queueRising":
         case "unhealthyFromStart":
+        case "interrupted":
+        case "failed":
             return HEALTH_COLORS.BORDERLINE;
         case "recovered":
             return HEALTH_COLORS.HEALTHY;

@@ -122,7 +122,7 @@ export function createAnalysisCard({ onOpenRecommendations }) {
         // Uyarılar
         const recTypes = analysis.recommendations.map((r) => r.type);
         if (analysis.voltaOverloaded) nodes.push(warningRow(t("analysis.voltaOverloaded")));
-        if (analysis.stopped) nodes.push(warningRow(t("analysis.stopped")));
+        if (analysis.stopped) nodes.push(warningRow(t(`analysis.ended.${analysis.endReason}`)));
         if (recTypes.includes("redirects")) nodes.push(warningRow(t("analysis.redirectsNotice")));
         if (recTypes.includes("clientErrors")) nodes.push(warningRow(t("analysis.clientErrorsNotice")));
 

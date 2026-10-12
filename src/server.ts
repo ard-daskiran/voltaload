@@ -41,15 +41,25 @@ io.on("connection", (socket) => {
 async function markInterruptedRuns() {
   const stuckRuns = await prisma.testRun.findMany({
     where: { status: "RUNNING" },
-    select: { id: true },
+    select: { id: true, startedAt: true, createdAt: true },
   });
 
   for (const run of stuckRuns) {
     try {
       const summary = await computeTestSummary(run.id);
+
+      // Bitiş anı: son kaydedilen sonuç. (Volta'nın yeniden açıldığı an değil; o saatler sonrası olabilir
+      // ve analiz aradaki bütün saniyeleri "cevap gelmedi" sanıp sunucuyu suçlar.) Hiç sonuç yoksa başlangıç.
+      const last = await prisma.testResult.findFirst({
+        where: { testRunId: run.id },
+        orderBy: { timestamp: "desc" },
+        select: { timestamp: true },
+      });
+      const finishedAt = last?.timestamp ?? run.startedAt ?? run.createdAt;
+
       await prisma.testRun.update({
         where: { id: run.id },
-        data: { status: "INTERRUPTED", finishedAt: new Date(), ...summary },
+        data: { status: "INTERRUPTED", finishedAt, ...summary },
       });
     } catch (err) {
       console.error(`Test ${run.id} işaretlenemedi:`, err);

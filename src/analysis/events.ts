@@ -20,8 +20,10 @@ export type AnalysisEvent =
   | { type: "errorPeak"; second: number; rate: number }
   | { type: "connectionLost"; second: number }
   | { type: "recovered"; second: number }
-  | { type: "end"; second: number }
-  | { type: "stopped"; second: number };
+  | { type: EndEventType; second: number };
+
+// Testin nasıl bittiği: tamamlandı, durduruldu, yarıda kaldı (Volta kapandı), hatayla bitti
+export type EndEventType = "end" | "stopped" | "interrupted" | "failed";
 
 const CONNECTION_TYPES = ["CONNECTION_REFUSED", "CONNECTION_RESET", "NETWORK_ERROR"];
 
@@ -57,7 +59,7 @@ export function buildEvents(
   baseline: Baseline,
   isStepped: boolean,
   endSecond: number, // Testin bittiği an (tamamlanan testte son cevabın geldiği saniye)
-  stopped: boolean
+  endType: EndEventType
 ): AnalysisEvent[] {
   const events: AnalysisEvent[] = [];
   if (seconds.length === 0) return events;
@@ -88,7 +90,9 @@ export function buildEvents(
         to: percentile(seconds[i].latencies, 0.95)!,
       });
     }
-  } else {
+  } else if (baseline.measured) {
+    // Ölçülebilir saniyeler vardı ama sağlıklı değildi. (Hiç ölçülemediyse, yani sunucuya baştan
+    // bağlanılamadıysa, bunu "Sunucuya bağlanılamıyor" olayı zaten anlatıyor.)
     events.push({ type: "unhealthyFromStart", second: 0 });
   }
 
@@ -120,7 +124,7 @@ export function buildEvents(
     if (recoveredAt >= 0) events.push({ type: "recovered", second: seconds[recoveredAt].index });
   }
 
-  events.push({ type: stopped ? "stopped" : "end", second: endSecond });
+  events.push({ type: endType, second: endSecond });
 
   // Zamana göre sırala (aynı saniyedekiler eklendikleri sırada kalır)
   return events

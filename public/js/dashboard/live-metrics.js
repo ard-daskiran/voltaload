@@ -28,6 +28,9 @@ export function createLiveMetrics() {
 
     // Her yeni dilimde çağrılır
     function addWindow(d) {
+        // Boş dilim: kartlardaki son değerler kalsın ("—" ile titremesin)
+        if (d.requestCount === 0) return;
+
         totals.requests += d.requestCount;
 
         for (const [code, count] of Object.entries(d.statusCounts)) {

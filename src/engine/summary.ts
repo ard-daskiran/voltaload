@@ -23,6 +23,9 @@ export interface TestSummary {
 }
 
 export async function computeTestSummary(testRunId: string): Promise<TestSummary> {
+  // Testin başlangıç anı (eski testlerde yok: o zaman ilk cevaptan sayılır)
+  const run = await prisma.testRun.findUnique({ where: { id: testRunId }, select: { startedAt: true } });
+
   const totalRequests = await prisma.testResult.count({ where: { testRunId } });
   const latencyCount = await prisma.testResult.count({ where: latencyWhere(testRunId) });
 
@@ -77,9 +80,12 @@ export async function computeTestSummary(testRunId: string): Promise<TestSummary
     return row?.responseTime ?? null;
   }
 
+  // Gerçek süre: testin başlangıcından son cevaba kadar.
+  // (İlk cevaptan saymak, N cevap için N−1 aralık verir ve RPS'i az istekli testlerde şişirir.)
   let actualDurationMs = 0;
-  if (allAgg._min.timestamp && allAgg._max.timestamp) {
-    actualDurationMs = allAgg._max.timestamp.getTime() - allAgg._min.timestamp.getTime();
+  const start = run?.startedAt ?? allAgg._min.timestamp;
+  if (start && allAgg._max.timestamp) {
+    actualDurationMs = Math.max(0, allAgg._max.timestamp.getTime() - start.getTime());
   }
 
   return {

@@ -10,6 +10,7 @@ import { summarizeWindow } from "../engine/windowStats.js";
 import { LIVE_WINDOW_MS } from "../config.js";
 import { serializeRun, profileOf } from "./testRunFormat.js";
 import { targetNamesFor } from "./savedTargets.js";
+
 type TestRunRecord = NonNullable<Awaited<ReturnType<typeof prisma.testRun.findUnique>>>;
 
 // --- Özet ---
@@ -51,7 +52,7 @@ async function loadSummary(testRun: TestRunRecord) {
 
 // --- Canlı dilimler ---
 
-// Bir testin o ana kadarki verisi, canlı akışla AYNI biçimde (LIVE_WINDOW_MS'lik dilimler).
+// Bir testin o ana kadarki verisi, canlı akışla AYNI biçimde (LIVE_WINDOW_MS'lik dilimler, boşlar dahil).
 // Canlı sayfa yenilenince ve detay sayfasında grafik bu dilimlerle çizilir.
 export async function getLiveWindows(id: string) {
   const testRun = await prisma.testRun.findUnique({ where: { id } });
@@ -64,38 +65,43 @@ export async function getLiveWindows(id: string) {
   });
 
   const profile = profileOf(testRun);
-  const origin = rows.length > 0 ? rows[0].timestamp.getTime() : 0;
+
+  // Dilimler testin başlangıcından sayılır (canlı akış ve analizle aynı). Eski testlerde ilk cevaptan.
+  const origin = testRun.startedAt?.getTime() ?? (rows.length > 0 ? rows[0].timestamp.getTime() : 0);
   const groups = new Map<number, typeof rows>();
 
   for (const row of rows) {
-    const index = Math.floor((row.timestamp.getTime() - origin) / LIVE_WINDOW_MS);
+    const index = Math.max(0, Math.floor((row.timestamp.getTime() - origin) / LIVE_WINDOW_MS));
     const group = groups.get(index);
     if (group) group.push(row);
     else groups.set(index, [row]);
   }
 
-  return [...groups.keys()]
-    .sort((a, b) => a - b)
-    .map((index) => {
-      const s = summarizeWindow(groups.get(index)!);
-      // Canlı akışta dilim, süresi dolunca gönderilir. Zamanı dilimin sonu olarak al.
-      const elapsedSeconds = ((index + 1) * LIVE_WINDOW_MS) / 1000;
+  const lastIndex = groups.size > 0 ? Math.max(...groups.keys()) : -1;
+  const windows = [];
 
-      return {
-        ...s,
-        elapsedSeconds,
-        bytesPerSecond: s.bytes / (LIVE_WINDOW_MS / 1000),
-        windowSeconds: LIVE_WINDOW_MS / 1000,
-        targetRps: targetRpsAt(
-          Math.max(0, elapsedSeconds - LIVE_WINDOW_MS / 2000),
-          testRun.targetRps,
-          testRun.duration,
-          profile
-        ),
-        lagMs: 0,
-        voltaOverloaded: false,
-      };
+  for (let index = 0; index <= lastIndex; index++) {
+    const s = summarizeWindow(groups.get(index) ?? []);
+    // Zamanı dilimin sonu (canlı akışla aynı)
+    const elapsedSeconds = ((index + 1) * LIVE_WINDOW_MS) / 1000;
+
+    windows.push({
+      ...s,
+      elapsedSeconds,
+      bytesPerSecond: s.bytes / (LIVE_WINDOW_MS / 1000),
+      windowSeconds: LIVE_WINDOW_MS / 1000,
+      targetRps: targetRpsAt(
+        (index * LIVE_WINDOW_MS + LIVE_WINDOW_MS / 2) / 1000,
+        testRun.targetRps,
+        testRun.duration,
+        profile
+      ),
+      lagMs: 0,
+      voltaOverloaded: false,
     });
+  }
+
+  return windows;
 }
 
 // --- Detay sayfası ---

@@ -1,9 +1,9 @@
 // Ham sonuçlardan saniyelik özet: her saniye için istek sayıları, hata türleri ve sıralı gecikmeler.
-// Saniyeler ilk sonucun zamanından sayılır (grafikle aynı başlangıç).
+// Saniyeler testin başlangıcından sayılır (grafik ve özetle aynı başlangıç).
 // Hiç cevap gelmeyen saniyeler de listede yer alır (sunucu kilitlenmiş olabilir).
 
 import { isLatencySample, isServerError, isConnectionError } from "../engine/windowStats.js";
-import { targetRpsAt, type LoadProfile } from "../engine/scheduler.js";
+import { requestsBetween, type LoadProfile } from "../engine/scheduler.js";
 
 export interface ResultRow {
   timestamp: Date;
@@ -14,7 +14,7 @@ export interface ResultRow {
 
 export interface SecondStats {
   index: number; // 0 → 0–1 sn arası
-  targetRps: number; // O saniyede hedeflenen istek sayısı
+  targetRps: number; // O saniyede gönderilmesi gereken istek sayısı (zamanlayıcıyla aynı hesap)
   inTest: boolean; // Test süresinin içinde mi? (sonrası: yolda kalan isteklerin cevapları)
   total: number;
   success: number; // Sunucu hatası olmayanlar (4xx dahil)
@@ -39,6 +39,7 @@ export function median(values: number[]): number | null {
 }
 
 interface BuildOptions {
+  origin: number; // Saniyelerin sayıldığı an (testin başlangıcı, ms)
   configuredDuration: number; // Testin ayarlanan süresi (hedef RPS hesabı için)
   effectiveDuration: number; // Analize girecek süre (durdurulan testlerde daha kısa)
   targetRps: number;
@@ -48,12 +49,11 @@ interface BuildOptions {
 export function buildSeconds(rows: ResultRow[], options: BuildOptions): SecondStats[] {
   if (rows.length === 0) return [];
 
-  const { configuredDuration, effectiveDuration, targetRps, profile } = options;
-  const origin = rows[0].timestamp.getTime();
+  const { configuredDuration, effectiveDuration, targetRps, profile, origin } = options;
 
   const createSecond = (index: number): SecondStats => ({
     index,
-    targetRps: index < configuredDuration ? targetRpsAt(index + 0.5, targetRps, configuredDuration, profile) : 0,
+    targetRps: index < configuredDuration ? requestsBetween(index, index + 1, targetRps, configuredDuration, profile) : 0,
     inTest: index < effectiveDuration,
     total: 0,
     success: 0,
@@ -68,7 +68,7 @@ export function buildSeconds(rows: ResultRow[], options: BuildOptions): SecondSt
   let lastIndex = 0;
 
   for (const row of rows) {
-    const index = Math.floor((row.timestamp.getTime() - origin) / 1000);
+    const index = Math.max(0, Math.floor((row.timestamp.getTime() - origin) / 1000));
     lastIndex = Math.max(lastIndex, index);
 
     let second = byIndex.get(index);

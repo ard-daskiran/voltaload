@@ -91,7 +91,13 @@ async function load() {
         } catch {
             // Yazı tipi bilgisi alınamazsa beklemeden devam et
         }
-        drawReportChart($("report-chart"), windows, seconds, testRun.loadProfile === "STEPPED");
+        // Grafiğe sadece dolu dilimler (boş dilimler çizgileri koparmasın); saniye sayıları bütün dilimlerden
+        drawReportChart(
+            $("report-chart"),
+            windows.filter((w) => w.requestCount > 0),
+            seconds,
+            testRun.loadProfile === "STEPPED"
+        );
 
         printButton.disabled = false;
     } catch (err) {

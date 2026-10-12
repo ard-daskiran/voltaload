@@ -10,6 +10,12 @@ import { apiError, errorBody, type ApiError } from "../errors.js";
 
 export type FinalStatus = "COMPLETED" | "STOPPED" | "FAILED";
 
+// Canlı dilim, süresi dolduktan bu kadar sonra gönderilir: worker sonuçları 100 ms'de bir topluyor,
+// o dilime ait geç gelen sonuçlar da yetişsin.
+const LIVE_EMIT_DELAY_MS = 150;
+// Zamanlayıcı bazen birkaç milisaniye erken çalışabilir; dilim sınırının hemen önüne düşmesin diye küçük pay
+const LIVE_TIMER_MARGIN_MS = 5;
+
 interface StartTestRunParams {
   testRunId: string;
   targetRps: number;
@@ -96,10 +102,15 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
 
     let testStartTime: number | null = null;
     let dbBuffer: ResultItem[] = [];
-    let socketBuffer: ResultItem[] = [];
-    let windowLagMs = 0;
+    let windowLagMs = 0; // Bu dilimdeki en yüksek gecikme
+    let lastLagMs = 0; // Son ölçülen gecikme (boş dilimlerde gösterge bunu göstermeye devam eder)
     let maxLagMs = 0; // Test boyunca en yüksek gecikme (veritabanına yazılır)
     let finalized = false;
+
+    // Canlı dilimler: sonuçlar kendi zamanlarına göre testin başlangıcından itibaren 200 ms'lik dilimlere yerleşir
+    // (detay sayfası ve analizle aynı). Sıradaki gönderilecek dilim nextWindow.
+    const liveWindows = new Map<number, ResultItem[]>();
+    let nextWindow = 0;
 
     // Veritabanı yazmaları sırayla yapılır, bir yazma bitmeden diğeri başlamaz
     let writeChain: Promise<void> = Promise.resolve();
@@ -115,11 +126,36 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
         });
     }
 
-    function emitWindow(items: ResultItem[]) {
-      if (items.length === 0 || testStartTime === null) return;
+    // Başlangıç anı da sonuçlarla aynı sırayla yazılır (özet ve analiz bunu kullanır)
+    function saveStartedAt(startedAt: number) {
+      writeChain = writeChain
+        .then(() =>
+          prisma.testRun
+            .update({ where: { id: params.testRunId }, data: { startedAt: new Date(startedAt) } })
+            .then(() => undefined)
+        )
+        .catch((err) => {
+          console.error("Başlangıç anı kaydedilemedi:", err);
+        });
+    }
 
-      const elapsedSeconds = (Date.now() - testStartTime) / 1000;
+    // --- Canlı yayın ---
+
+    // Sonucu ait olduğu dilime koy. Dilimi zaten gönderilmiş çok geç bir sonuç, sıradaki dilime eklenir (kaybolmasın).
+    function addToLive(items: ResultItem[]) {
+      if (testStartTime === null) return;
+      for (const item of items) {
+        const index = Math.max(nextWindow, Math.floor((item.timestamp - testStartTime) / LIVE_WINDOW_MS));
+        const list = liveWindows.get(index);
+        if (list) list.push(item);
+        else liveWindows.set(index, [item]);
+      }
+    }
+
+    // Bir dilimi gönder. Zamanı dilimin sonu (0–0,2 arası → 0,2). Boş dilim de gönderilir: grafik düzgün ilerler.
+    function emitWindow(index: number, items: ResultItem[]) {
       const s = summarizeWindow(items);
+      const elapsedSeconds = ((index + 1) * LIVE_WINDOW_MS) / 1000;
 
       room.emit("progress", {
         ...s,
@@ -127,16 +163,33 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
         bytesPerSecond: s.bytes / (LIVE_WINDOW_MS / 1000),
         windowSeconds: LIVE_WINDOW_MS / 1000,
         targetRps: targetRpsAt(
-          Math.max(0, elapsedSeconds - LIVE_WINDOW_MS / 2000),
+          (index * LIVE_WINDOW_MS + LIVE_WINDOW_MS / 2) / 1000,
           params.targetRps,
           params.durationSeconds,
           params.profile
         ),
-        lagMs: windowLagMs,
+        lagMs: windowLagMs > 0 ? windowLagMs : lastLagMs,
         voltaOverloaded: windowLagMs > WORKER_LAG_WARNING_MS,
       });
 
       windowLagMs = 0;
+    }
+
+    // Süresi dolmuş dilimleri sırayla gönder. final: test bitti, elde ne varsa gönder.
+    function emitReadyWindows(final: boolean) {
+      if (testStartTime === null) return;
+
+      const until = final
+        ? liveWindows.size > 0
+          ? Math.max(...liveWindows.keys()) + 1
+          : nextWindow
+        : Math.floor((Date.now() - testStartTime - LIVE_EMIT_DELAY_MS) / LIVE_WINDOW_MS);
+
+      while (nextWindow < until) {
+        emitWindow(nextWindow, liveWindows.get(nextWindow) ?? []);
+        liveWindows.delete(nextWindow);
+        nextWindow++;
+      }
     }
 
     const flushInterval = setInterval(() => {
@@ -146,11 +199,22 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       writeToDb(toWrite);
     }, DB_FLUSH_INTERVAL_MS);
 
-    const socketInterval = setInterval(() => {
-      const toSend = socketBuffer;
-      socketBuffer = [];
-      emitWindow(toSend);
-    }, LIVE_WINDOW_MS);
+    // Canlı dilim zamanlayıcısı: testin başlangıcına hizalı. Her dilim bittikten LIVE_EMIT_DELAY_MS sonra
+    // çalışır ve tam bir dilim gönderir. (Hizasız bir setInterval, dilim sınırına yakın denk gelince
+    // bazen 0, bazen 2 dilim gönderip grafiği sarsıyordu.) Gecikirse kaçırdıklarını bir sonraki seferde gönderir.
+    let liveTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function scheduleLiveTick() {
+      if (testStartTime === null || finalized) return;
+
+      const nextDue =
+        testStartTime + (nextWindow + 1) * LIVE_WINDOW_MS + LIVE_EMIT_DELAY_MS + LIVE_TIMER_MARGIN_MS;
+
+      liveTimer = setTimeout(() => {
+        emitReadyWindows(false);
+        scheduleLiveTick();
+      }, Math.max(0, nextDue - Date.now()));
+    }
 
     // Test nasıl biterse bitsin (tamamlandı, durduruldu, hata) buradan geçer, sadece bir kez çalışır
     async function finalize(status: FinalStatus, error?: ApiError) {
@@ -158,7 +222,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       finalized = true;
 
       clearInterval(flushInterval);
-      clearInterval(socketInterval);
+      if (liveTimer) clearTimeout(liveTimer);
       await worker.terminate();
 
       // Tamponda kalanları yaz, bekleyen yazmaların bitmesini bekle
@@ -168,8 +232,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       }
       await writeChain;
 
-      emitWindow(socketBuffer);
-      socketBuffer = [];
+      emitReadyWindows(true);
 
       // Özet bütün sonuçlar yazıldıktan sonra hesaplanır
       try {
@@ -207,13 +270,25 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
     };
 
     worker.on("message", (message) => {
+      // Testin başlangıç anı: canlı dilimler buradan sayılır, veritabanına da yazılır
+      if (message.type === "started") {
+        testStartTime = message.startedAt;
+        saveStartedAt(message.startedAt);
+        scheduleLiveTick();
+      }
+
       if (message.type === "batch") {
-        if (testStartTime === null) testStartTime = Date.now();
+        // "started" mesajı her zaman önce gelir; gelmediyse (beklenmez) ilk paketin anı
+        if (testStartTime === null) {
+          testStartTime = Date.now();
+          scheduleLiveTick();
+        }
         dbBuffer.push(...message.results);
-        socketBuffer.push(...message.results);
+        addToLive(message.results);
 
         const lagMs = message.lagMs ?? 0;
         windowLagMs = Math.max(windowLagMs, lagMs);
+        lastLagMs = lagMs;
 
         // İlk saniyedeki gecikme kaydedilmez: worker ısınırken kısa süre yükselebilir
         if (Date.now() - testStartTime >= 1000) {

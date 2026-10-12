@@ -48,6 +48,10 @@ export function validateStartRequest(input: any): { ok: true; value: StartReques
     if (typeof stepCount !== "number" || !Number.isInteger(stepCount) || stepCount < MIN_STEP_COUNT || stepCount > MAX_STEP_COUNT) {
       return { ok: false, error: apiError("INVALID_STEP_COUNT", { min: MIN_STEP_COUNT, max: MAX_STEP_COUNT }) };
     }
+    // Her kademe saniyede en az 1 istek göndermeli (yuvarlanınca 0 RPS'lik kademe olmasın)
+    if (targetRps < stepCount) {
+      return { ok: false, error: apiError("STEP_RPS_TOO_LOW", { min: stepCount }) };
+    }
     if (duration / stepCount < MIN_STEP_DURATION_SECONDS) {
       return { ok: false, error: apiError("STEP_TOO_SHORT", { min: MIN_STEP_DURATION_SECONDS }) };
     }

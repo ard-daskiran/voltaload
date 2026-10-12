@@ -11,6 +11,7 @@ export type ErrorCode =
   | "INVALID_PROFILE"
   | "INVALID_STEP_COUNT"
   | "STEP_TOO_SHORT"
+  | "STEP_RPS_TOO_LOW"
   // Hedef adres
   | "URL_MALFORMED"
   | "URL_PROTOCOL"
@@ -47,7 +48,8 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   INVALID_PROFILE: () => "Test type must be CONSTANT or STEPPED.",
   INVALID_STEP_COUNT: (p) => `Steps must be between ${p.min} and ${p.max}.`,
   STEP_TOO_SHORT: (p) => `Each step must last at least ${p.min}s. Increase the duration or reduce the steps.`,
-
+  STEP_RPS_TOO_LOW: (p) => `Max RPS cannot be lower than the number of steps (${p.min}).`,
+  
   URL_MALFORMED: () => "Invalid URL format.",
   URL_PROTOCOL: () => "Only http and https addresses can be tested.",
   URL_UNSPECIFIED: () => "0.0.0.0 is not a target address. Use localhost instead.",

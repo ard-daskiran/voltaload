@@ -7,6 +7,14 @@ export interface LoadProfile {
 
 const CONSTANT_PROFILE: LoadProfile = { type: "CONSTANT" };
 
+// Kayan nokta hatalarına karşı küçük pay (örneğin 20/3 sn'lik kademelerde)
+const EPSILON = 1e-9;
+
+// Kademenin (0'dan sayılır) RPS'i: tam sayıya yuvarlanır, formda görünen değerle aynı. En az 1.
+function stepRps(stepIndex: number, targetRps: number, steps: number): number {
+  return Math.max(1, Math.round((targetRps * (stepIndex + 1)) / steps));
+}
+
 // Testin belirli bir anında (saniye) hedeflenen RPS
 export function targetRpsAt(
   seconds: number,
@@ -18,18 +26,19 @@ export function targetRpsAt(
 
   const steps = Math.max(1, profile.stepCount ?? 1);
   const stepDuration = durationSeconds / steps;
-  const stepIndex = Math.min(steps - 1, Math.floor(seconds / stepDuration));
-  return (targetRps * (stepIndex + 1)) / steps;
+  const stepIndex = Math.min(steps - 1, Math.max(0, Math.floor(seconds / stepDuration)));
+  return stepRps(stepIndex, targetRps, steps);
 }
 
-// Testin belirli bir anına (saniye) kadar toplamda atılmış olması gereken istek sayısı
-function expectedTicksAt(
+// Testin başından verilen ana kadarki "istek miktarı": RPS eğrisinin altındaki alan. Tam sayı olmayabilir.
+function requestVolumeAt(
   seconds: number,
   targetRps: number,
   durationSeconds: number,
-  profile: LoadProfile = CONSTANT_PROFILE
+  profile: LoadProfile
 ): number {
-  if (profile.type === "CONSTANT") return seconds * targetRps;
+  const t = Math.min(Math.max(0, seconds), durationSeconds);
+  if (profile.type === "CONSTANT") return t * targetRps;
 
   const steps = Math.max(1, profile.stepCount ?? 1);
   const stepDuration = durationSeconds / steps;
@@ -37,14 +46,50 @@ function expectedTicksAt(
 
   for (let i = 0; i < steps; i++) {
     const stepStart = i * stepDuration;
-    if (seconds <= stepStart) break;
+    if (t <= stepStart) break;
 
-    const stepEnd = Math.min(seconds, stepStart + stepDuration);
-    const stepRps = (targetRps * (i + 1)) / steps;
-    total += (stepEnd - stepStart) * stepRps;
+    const stepEnd = Math.min(t, stepStart + stepDuration);
+    total += (stepEnd - stepStart) * stepRps(i, targetRps, steps);
   }
 
   return total;
+}
+
+// Testin toplam istek sayısı
+function totalRequests(targetRps: number, durationSeconds: number, profile: LoadProfile): number {
+  return Math.ceil(requestVolumeAt(durationSeconds, targetRps, durationSeconds, profile) - EPSILON);
+}
+
+// İstekler eşit aralıklarla gönderilir, İLKİ 0. ANDA: k. istek, istek miktarının k'ya ulaştığı anda gider.
+// (5 RPS → 0 · 0,2 · 0,4 · ... Her saniyeye tam 5 istek düşer.)
+
+// Verilen ana kadar (o an dahil) gönderilmiş olması gereken istek sayısı. Zamanlayıcı kullanır.
+function requestsDueBy(seconds: number, targetRps: number, durationSeconds: number, profile: LoadProfile): number {
+  const total = totalRequests(targetRps, durationSeconds, profile);
+  if (seconds >= durationSeconds) return total;
+  return Math.min(total, Math.floor(requestVolumeAt(seconds, targetRps, durationSeconds, profile) + EPSILON) + 1);
+}
+
+// Verilen andan ÖNCE gönderilmiş olması gereken istek sayısı
+function requestsBefore(seconds: number, targetRps: number, durationSeconds: number, profile: LoadProfile): number {
+  if (seconds <= 0) return 0;
+  const total = totalRequests(targetRps, durationSeconds, profile);
+  if (seconds >= durationSeconds) return total;
+  return Math.min(total, Math.ceil(requestVolumeAt(seconds, targetRps, durationSeconds, profile) - EPSILON));
+}
+
+// İki an arasında ([from, to)) gönderilmesi gereken istek sayısı. Analiz, her saniyenin hedefini buradan alır
+// (zamanlayıcıyla aynı hesap: kademe saniyenin ortasında değişse de doğru).
+export function requestsBetween(
+  from: number,
+  to: number,
+  targetRps: number,
+  durationSeconds: number,
+  profile: LoadProfile = CONSTANT_PROFILE
+): number {
+  return (
+    requestsBefore(to, targetRps, durationSeconds, profile) - requestsBefore(from, targetRps, durationSeconds, profile)
+  );
 }
 
 // Not: Bu döngü test süresince bir CPU çekirdeğini meşgul eder.
@@ -58,7 +103,7 @@ export function runScheduledLoop(
 ): Promise<void> {
   const startTime = process.hrtime.bigint();
   const durationMs = durationSeconds * 1000;
-  const totalTicks = Math.floor(expectedTicksAt(durationSeconds, targetRps, durationSeconds, profile));
+  const total = totalRequests(targetRps, durationSeconds, profile);
 
   let ticksSoFar = 0;
 
@@ -72,7 +117,7 @@ export function runScheduledLoop(
 
       // Süre doldu: son anda kaçırılan istekleri de at, bitir
       if (nowMs >= durationMs) {
-        while (ticksSoFar < totalTicks) {
+        while (ticksSoFar < total) {
           onTick();
           ticksSoFar++;
         }
@@ -80,8 +125,8 @@ export function runScheduledLoop(
         return;
       }
 
-      // Geride kaldıysak açığı hemen kapat
-      const expected = Math.floor(expectedTicksAt(nowMs / 1000, targetRps, durationSeconds, profile));
+      // Geride kaldıysak açığı hemen kapat (ilk istek 0. anda gider)
+      const expected = requestsDueBy(nowMs / 1000, targetRps, durationSeconds, profile);
 
       while (ticksSoFar < expected) {
         onTick();

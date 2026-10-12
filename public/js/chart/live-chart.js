@@ -24,6 +24,11 @@ let initialMaxSeconds = 10;
 let userZoomed = false;
 let lastX = 0;
 
+// Kullanıcının açıp kapattığı çizgiler: sayfa açık kaldığı sürece hatırlanır, yeni test grafiği onlarla kurulur.
+// Dokunulmayan çizgiler varsayılanda kalır (RPS çizgileri sabit yükte kapalı, kademelide açık).
+const visibilityChoice = new Map(); // çizgi → görünür mü
+let currentDefaults = null; // mevcut grafiğin varsayılan görünürlükleri
+
 const animator = createChartAnimator();
 const revealPlugin = createRevealPlugin(() => animator.revealedX());
 
@@ -62,6 +67,15 @@ function extendRange(x) {
 
 export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
     const canvas = document.getElementById("chart");
+
+    // Eski grafik silinmeden önce: kullanıcının varsayılandan farklı bıraktığı çizgileri hatırla
+    if (liveChart && currentDefaults) {
+        for (const [series, visibleByDefault] of currentDefaults) {
+            const visible = liveChart.isDatasetVisible(series);
+            if (visible !== visibleByDefault || visibilityChoice.has(series)) visibilityChoice.set(series, visible);
+        }
+    }
+
     if (liveChart) liveChart.destroy();
 
     if (!tooltip) {
@@ -82,6 +96,17 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
 
     // Kademeli testte RPS çizgileri varsayılan açık (merdiven ve başarılı RPS asıl görüntü)
     const showRps = profileType === "STEPPED";
+    currentDefaults = new Map([
+        [SERIES.AVG, true],
+        [SERIES.P95, true],
+        [SERIES.P99, true],
+        [SERIES.SUCCESS_RPS, showRps],
+        [SERIES.SENT_RPS, showRps],
+        [SERIES.CONNECTION, true],
+    ]);
+
+    // Kullanıcı seçtiyse onun seçimi, yoksa varsayılan
+    const hiddenOf = (series) => !(visibilityChoice.get(series) ?? currentDefaults.get(series));
 
     const line = (label, color, extra = {}) => ({
         label,
@@ -103,6 +128,7 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
         data: {
             datasets: [
                 line(t("chart.series.avg"), CHART_COLORS.avg, {
+                    hidden: hiddenOf(SERIES.AVG),
                     borderWidth: 2,
                     fill: "origin",
                     backgroundColor: avgFill,
@@ -117,18 +143,18 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
                         backgroundColor: (ctx) => (windowMeta[ctx.p1DataIndex]?.hasError ? CHART_COLORS.errorFill : undefined),
                     },
                 }),
-                line(t("chart.series.p95"), CHART_COLORS.p95),
-                line(t("chart.series.p99"), CHART_COLORS.p99),
+                line(t("chart.series.p95"), CHART_COLORS.p95, { hidden: hiddenOf(SERIES.P95) }),
+                line(t("chart.series.p99"), CHART_COLORS.p99, { hidden: hiddenOf(SERIES.P99) }),
                 // Başarılı RPS: sadece tam saniyelerde nokta (her biri o saniyenin tamamı)
                 line(t("chart.series.completedRps"), CHART_COLORS.successRps, {
                     yAxisID: "y1",
-                    hidden: !showRps,
+                    hidden: hiddenOf(SERIES.SUCCESS_RPS),
                     pointRadius: 2,
                     spanGaps: true,
                 }),
                 line(t("chart.series.sentRps"), CHART_COLORS.sentRps, {
                     yAxisID: "y1",
-                    hidden: !showRps,
+                    hidden: hiddenOf(SERIES.SENT_RPS),
                     borderDash: [5, 4],
                     borderWidth: 1,
                     stepped: true,
@@ -233,6 +259,19 @@ export function addWindow(d) {
     if (windowMeta.length > 0 && x <= lastX) x = roundTime(lastX + windowSeconds);
     if (x < 0) x = 0;
 
+
+    // Boş dilim (o 0,2 saniyede hiç cevap gelmedi; düşük RPS'te olağan): gecikme çizgilerine nokta eklenmez,
+    // çizgiler bir önceki noktadan sonrakine kesintisiz bağlanır. Grafik yine de düzgün ilerler.
+    // (Bağlantı hatası farklı: istek var ama gecikme yok, aşağıda kırmızı çizgiyle gösterilir.)
+    if (d.requestCount === 0) {
+        liveChart.data.datasets[SERIES.SENT_RPS].data.push({ x, y: d.targetRps });
+        lastX = x;
+        extendRange(x);
+        liveChart.update("none");
+        animator.revealTo(x, windowSeconds * 1000, windowMeta.length > 0);
+        return x;
+    }
+
     const hasLatency = d.avgResponseTime !== null;
     const index = windowMeta.length;
 
@@ -295,7 +334,8 @@ export function closeChart() {
 
     const last = windowMeta[windowMeta.length - 1];
     const endX = roundTime(last.x + windowSeconds);
-    if (windowIndexByX.has(xKey(endX))) return;
+    // Son dolu dilimden sonra boş dilimler geldiyse grafik zaten oraya kadar ilerledi
+    if (windowIndexByX.has(xKey(endX)) || endX <= lastX) return;
 
     const index = windowMeta.length;
     windowMeta.push({ ...last, x: endX });

@@ -149,6 +149,10 @@ port.on("message", async (message: StartMessage) => {
 
   const inFlight = new Set<Promise<void>>();
 
+  // Testin başlangıç anı: zamanlayıcının sıfır noktası. İlk istek bundan 1/RPS saniye sonra atılır,
+  // bu yüzden saniyeler ilk cevaptan değil buradan sayılmalı.
+  port.postMessage({ type: "started", testRunId, startedAt: Date.now() });
+
   await runScheduledLoop(
     targetRps,
     durationSeconds,

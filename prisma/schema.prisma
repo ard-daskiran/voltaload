@@ -40,6 +40,11 @@ model TestRun {
   // Uyarı sınırını aştıysa analiz "Volta zorlandı, sonuçlar güvenilir olmayabilir" der.
   maxLagMs         Int?
 
+  // Testin gerçek başlangıç anı: worker zamanlayıcıyı başlatmadan hemen önce bildirir.
+  // Analiz, özet ve grafik saniyeleri buradan sayar (ilk cevaptan değil).
+  // Bu alan eklenmeden önceki testlerde boştur, o zaman ilk cevaptan sayılır.
+  startedAt DateTime?
+
   results TestResult[]
 }
 

@@ -15,14 +15,19 @@ const MIN_STEP_COUNT = 2;
 const MAX_STEP_COUNT = 10;
 const MIN_STEP_DURATION_SECONDS = 2;
 
+// Kademelerin RPS'i: sunucudaki zamanlayıcıyla aynı yuvarlama
 function stepTargets(rps, steps) {
-    return Array.from({ length: steps }, (_, i) => Math.round((rps * (i + 1)) / steps));
+    return Array.from({ length: steps }, (_, i) => Math.max(1, Math.round((rps * (i + 1)) / steps)));
 }
 
 // Kademeli test ayarları geçerli mi? Geçersizse hata mesajı döner.
-function checkStepped(duration, steps) {
+function checkStepped(rps, duration, steps) {
     if (!Number.isInteger(steps) || steps < MIN_STEP_COUNT || steps > MAX_STEP_COUNT) {
         return t("form.stepCountRange", { min: MIN_STEP_COUNT, max: MAX_STEP_COUNT });
+    }
+    // Her kademe saniyede en az 1 istek göndermeli
+    if (rps < steps) {
+        return t("form.stepRpsTooLow", { min: steps });
     }
     if (!(duration > 0) || duration / steps < MIN_STEP_DURATION_SECONDS) {
         return t("form.stepTooShort", { min: MIN_STEP_DURATION_SECONDS });
@@ -68,7 +73,7 @@ export function createTestForm() {
         const duration = Number(durationInput.value);
         const steps = Number(stepCountInput.value);
         // Önce RPS ve süre, sonra kademe kuralları
-        const error = checkBasics(rps, duration) ?? checkStepped(duration, steps);
+        const error = checkBasics(rps, duration) ?? checkStepped(rps, duration, steps);
 
         stepPreview.classList.toggle("text-signal-error", Boolean(error));
         stepPreview.classList.toggle("text-outline", !error);
@@ -137,7 +142,7 @@ export function createTestForm() {
         if (basicError) return { ok: false, error: basicError };
 
         if (profile === "STEPPED") {
-            const error = checkStepped(duration, stepCount);
+            const error = checkStepped(targetRps, duration, stepCount);
             if (error) return { ok: false, error };
         }
 

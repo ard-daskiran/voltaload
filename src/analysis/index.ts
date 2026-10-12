@@ -45,13 +45,17 @@ export async function analyzeTestRun(id: string) {
 
   // Durdurulan ya da yarıda kalan testte sadece durana kadarki saniyeler analiz edilir.
   // Yoksa durduktan sonraki "cevapsız" saniyeler, sunucu çökmüş gibi görünür.
+    // Saniyeler testin başlangıcından sayılır. Eski testlerde başlangıç kaydı yok, ilk cevaptan sayılır.
+  const origin = testRun.startedAt?.getTime() ?? rows[0].timestamp.getTime();
+
   let effectiveDuration = testRun.duration;
   if (stopped && testRun.finishedAt) {
-    const stoppedAt = Math.floor((testRun.finishedAt.getTime() - rows[0].timestamp.getTime()) / 1000);
+    const stoppedAt = Math.floor((testRun.finishedAt.getTime() - origin) / 1000);
     effectiveDuration = Math.max(1, Math.min(testRun.duration, stoppedAt));
   }
 
   const allSeconds = buildSeconds(rows, {
+    origin,
     configuredDuration: testRun.duration,
     effectiveDuration,
     targetRps: testRun.targetRps,
@@ -63,7 +67,7 @@ export async function analyzeTestRun(id: string) {
   const seconds = stopped ? allSeconds.filter((s) => s.inTest) : allSeconds;
   const endSecond = stopped ? effectiveDuration : seconds[seconds.length - 1].index + 1;
 
-  const ranges = stepRanges(testRun.duration, profile);
+  const ranges = stepRanges(testRun.duration, profile, testRun.targetRps);
   const baseline = findBaseline(seconds, ranges[0].to);
   const steps = analyzeSteps(seconds, ranges, baseline);
   if (steps.length === 0) return { status: "empty" as const };

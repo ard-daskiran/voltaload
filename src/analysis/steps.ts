@@ -5,11 +5,13 @@ import { classifyGroup, type HealthState, type Reason } from "./classify.js";
 import type { SecondStats } from "./seconds.js";
 import type { Baseline } from "./baseline.js";
 import type { LoadProfile } from "../engine/scheduler.js";
+import { targetRpsAt } from "../engine/scheduler.js";
 
 export interface StepRange {
   index: number; // 1'den başlar
   from: number; // Başlangıç saniyesi (dahil)
   to: number; // Bitiş saniyesi (hariç)
+  rps: number; // Kademenin hedef RPS'i (formda ve zamanlayıcıda görünen)
 }
 
 export interface StepResult {
@@ -28,8 +30,8 @@ export interface StepResult {
 }
 
 // Her saniye, ortası hangi kademeye düşüyorsa o kademeye aittir (zamanlayıcıyla aynı mantık)
-export function stepRanges(duration: number, profile: LoadProfile): StepRange[] {
-  if (profile.type !== "STEPPED") return [{ index: 1, from: 0, to: duration }];
+export function stepRanges(duration: number, profile: LoadProfile, targetRps: number): StepRange[] {
+  if (profile.type !== "STEPPED") return [{ index: 1, from: 0, to: duration, rps: targetRps }];
 
   const stepCount = profile.stepCount ?? 1;
   const stepDuration = duration / stepCount;
@@ -38,8 +40,12 @@ export function stepRanges(duration: number, profile: LoadProfile): StepRange[] 
   for (let s = 0; s < duration; s++) {
     const index = Math.min(stepCount, Math.floor((s + 0.5) / stepDuration) + 1);
     const current = ranges[ranges.length - 1];
-    if (current && current.index === index) current.to = s + 1;
-    else ranges.push({ index, from: s, to: s + 1 });
+    if (current && current.index === index) {
+      current.to = s + 1;
+    } else {
+      const rps = targetRpsAt((index - 0.5) * stepDuration, targetRps, duration, profile);
+      ranges.push({ index, from: s, to: s + 1, rps });
+    }
   }
 
   return ranges;
@@ -67,7 +73,7 @@ export function analyzeSteps(seconds: SecondStats[], ranges: StepRange[], baseli
       index: range.index,
       fromSecond: range.from,
       toSecond: range.to,
-      targetRps: Math.round(Math.max(...group.map((s) => s.targetRps))),
+      targetRps: range.rps,
       actualRps: Math.round(stats.actualRps * 10) / 10,
       avg: stats.avg !== null ? Math.round(stats.avg) : null,
       p95: stats.p95,

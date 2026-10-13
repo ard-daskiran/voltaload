@@ -13,6 +13,7 @@ import {
   reserveTestSlot,
   releaseTestSlot,
   getActiveTestRun,
+  snapshotActiveTest,
 } from "../engine/testRunManager.js";
 import { resolveTarget } from "../engine/security.js";
 import { validateStartRequest } from "../services/startRequest.js";
@@ -113,7 +114,10 @@ export function createTestRunRouter(io: Server): Router {
 
   // Bir testin o ana kadarki verisi, canlı akışla aynı biçimde
   testRunRouter.get("/:id/live", async (req, res) => {
-    const windows = await getLiveWindows(req.params.id);
+    // Test çalışıyorsa: tampondaki sonuçlar önce yazılır ve sadece canlı yayında zaten gönderilmiş dilimler döner.
+    // Sonrakiler canlı akıştan gelir (bir dilim iki yerden yarım yarım gelmesin, istek kaybolmasın).
+    const untilWindow = await snapshotActiveTest(req.params.id);
+    const windows = await getLiveWindows(req.params.id, untilWindow ?? undefined);
     if (!windows) {
       return res.status(404).json(errorBody(apiError("TEST_NOT_FOUND")));
     }

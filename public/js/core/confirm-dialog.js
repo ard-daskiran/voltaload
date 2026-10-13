@@ -25,6 +25,8 @@ const DONE_DISPLAY_MS = 700; // "✓ SİLİNDİ" yazısının görünme süresi
 export function confirmDialog({ title, message, details = [], confirmLabel, busyLabel, doneLabel, requireText = null, onConfirm }) {
     return new Promise((resolve) => {
         const previousFocus = document.activeElement;
+        // Açılmadan önceki kaydırma durumu: başka bir pencerenin üstünde açıldıysa (rehber) kapanınca ona dönülsün
+        const previousOverflow = document.body.style.overflow;
         let busy = false;
 
         // --- Pencere ---
@@ -98,7 +100,7 @@ export function confirmDialog({ title, message, details = [], confirmLabel, busy
         function close(result) {
             document.removeEventListener("keydown", onKey);
             overlay.remove();
-            document.body.style.overflow = "";
+            document.body.style.overflow = previousOverflow;
             previousFocus?.focus?.();
             resolve(result);
         }

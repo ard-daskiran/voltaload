@@ -54,7 +54,8 @@ async function loadSummary(testRun: TestRunRecord) {
 
 // Bir testin o ana kadarki verisi, canlı akışla AYNI biçimde (LIVE_WINDOW_MS'lik dilimler, boşlar dahil).
 // Canlı sayfa yenilenince ve detay sayfasında grafik bu dilimlerle çizilir.
-export async function getLiveWindows(id: string) {
+// untilWindow: verilirse sadece bu dilimden öncekiler (çalışan testte, canlı yayında zaten gönderilmiş olanlar)
+export async function getLiveWindows(id: string, untilWindow?: number) {
   const testRun = await prisma.testRun.findUnique({ where: { id } });
   if (!testRun) return null;
 
@@ -77,7 +78,8 @@ export async function getLiveWindows(id: string) {
     else groups.set(index, [row]);
   }
 
-  const lastIndex = groups.size > 0 ? Math.max(...groups.keys()) : -1;
+  const lastIndex =
+    untilWindow !== undefined ? untilWindow - 1 : groups.size > 0 ? Math.max(...groups.keys()) : -1;
   const windows = [];
 
   for (let index = 0; index <= lastIndex; index++) {

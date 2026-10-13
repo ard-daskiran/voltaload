@@ -3,7 +3,8 @@
 
 import { apiErrorMessage } from "../core/api-error.js";
 
-export function createTestSession({ onWindow, onDone, onError }) {
+// onConnectionLost(testRunning) / onConnectionRestored(): Volta'yla canlı bağlantı koptu / kuruldu
+export function createTestSession({ onWindow, onDone, onError, onConnectionLost, onConnectionRestored }) {
     const socket = io();
 
     let activeTestRunId = null;
@@ -48,6 +49,12 @@ export function createTestSession({ onWindow, onDone, onError }) {
     // Bağlantı kısa süreliğine koparsa Socket.io kendiliğinden yeniden bağlanır, odaya tekrar katıl
     socket.on("connect", () => {
         if (activeTestRunId) socket.emit("join-test", activeTestRunId);
+        onConnectionRestored?.();
+    });
+
+    // Volta kapandı ya da bağlantı koptu (Socket.io arka planda yeniden bağlanmayı dener)
+    socket.on("disconnect", () => {
+        onConnectionLost?.(Boolean(activeTestRunId));
     });
 
     // --- Dışarıya açık fonksiyonlar ---

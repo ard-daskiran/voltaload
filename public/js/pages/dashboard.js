@@ -14,6 +14,7 @@ import { createRequestLog } from "../dashboard/request-log.js";
 import { createVoltaStatus } from "../dashboard/volta-status.js";
 import { createTargetBook } from "../dashboard/target-book.js";
 import { createSaveSuggestion } from "../dashboard/save-suggestion.js";
+import { createConnectionOverlay } from "../core/connection-overlay.js";
 
 renderHeader();
 applyTranslations();
@@ -29,6 +30,7 @@ const saveSuggestion = createSaveSuggestion({ onSave: (url) => targetBook.open({
 const metrics = createLiveMetrics();
 const voltaStatus = createVoltaStatus();
 const requestLog = createRequestLog($("terminal-log"));
+const connectionOverlay = createConnectionOverlay();
 
 const statusCard = createStatusCard({
     rowsEl: $("status-rows"),
@@ -94,6 +96,8 @@ const session = createTestSession({
         saveSuggestion.maybeSuggest(currentTestUrl);
     },
     onError: (message) => finishTest(t("state.error", { message }), true),
+    onConnectionLost: connectionOverlay.lost,
+    onConnectionRestored: connectionOverlay.restored,
 });
 
 // --- Butonlar ---

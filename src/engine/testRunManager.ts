@@ -48,6 +48,7 @@ interface ActiveRun {
     profile?: LoadProfile;
   };
   stop: () => Promise<void>;
+  snapshot: () => Promise<number>;
 }
 
 // --- Aynı anda tek test kuralı ---
@@ -70,6 +71,15 @@ export function releaseTestSlot(): void {
 export function getActiveTestRun() {
   if (!activeRun) return null;
   return { testRunId: activeRun.testRunId, startedAt: activeRun.startedAt, config: activeRun.config };
+}
+
+
+// Sayfa çalışan teste yeniden bağlanırken çağrılır: tampondaki sonuçları veritabanına yazar ve canlı yayında
+// o ana kadar gönderilmiş dilim sayısını döndürür. O dilimler veritabanından, sonrakiler canlı akıştan gelir.
+// Test çalışmıyorsa (ya da başka bir testse) null.
+export async function snapshotActiveTest(testRunId: string): Promise<number | null> {
+  if (!activeRun || activeRun.testRunId !== testRunId) return null;
+  return activeRun.snapshot();
 }
 
 // --- Yardımcılar ---
@@ -267,6 +277,16 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
         profile: params.profile,
       },
       stop: () => finalize("STOPPED"),
+      // Gönderilmiş dilimlerin bütün sonuçları şu an ya tamponda ya veritabanında: tamponu yaz, sınırı döndür
+      snapshot: async () => {
+        const sentWindows = nextWindow;
+        if (dbBuffer.length > 0) {
+          writeToDb(dbBuffer);
+          dbBuffer = [];
+        }
+        await writeChain;
+        return sentWindows;
+      },
     };
 
     worker.on("message", (message) => {

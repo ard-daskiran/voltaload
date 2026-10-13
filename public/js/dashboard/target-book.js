@@ -158,15 +158,17 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
     }
 
     async function load() {
+        if (!refs) return;
         message(t("book.loading"));
         try {
             const response = await fetch("/api/targets");
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             targets = await response.json();
-            renderList();
+            // Pencere bu arada kapatıldıysa çizecek yer yok
+            if (refs) renderList();
         } catch (err) {
             console.error(err);
-            message(t("book.loadError"), true);
+            if (refs) message(t("book.loadError"), true);
         }
     }
 
@@ -229,7 +231,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
     }
 
     async function save() {
-        if (refs.saveBtn.disabled) return;
+        if (!refs || refs.saveBtn.disabled) return;
 
         refs.formError.hidden = true;
         refs.saveBtn.disabled = true;
@@ -244,21 +246,30 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                refs.formError.textContent = apiErrorMessage(data, "book.saveFailed");
-                refs.formError.hidden = false;
+                if (refs) {
+                    refs.formError.textContent = apiErrorMessage(data, "book.saveFailed");
+                    refs.formError.hidden = false;
+                }
                 return;
             }
 
+            // Kayıt yapıldı: pencere bu arada kapatılsa da kullanıcıya haber ver
             showToast(t("book.saved", { name: data.name }), { detail: shortUrl(data.url) });
-            toggleForm(false);
-            await load();
+            if (refs) {
+                toggleForm(false);
+                await load();
+            }
         } catch (err) {
             console.error(err);
-            refs.formError.textContent = t("book.saveFailed");
-            refs.formError.hidden = false;
+            if (refs) {
+                refs.formError.textContent = t("book.saveFailed");
+                refs.formError.hidden = false;
+            }
         } finally {
-            refs.saveBtn.disabled = false;
-            refs.saveBtn.textContent = t("book.save");
+            if (refs) {
+                refs.saveBtn.disabled = false;
+                refs.saveBtn.textContent = t("book.save");
+            }
         }
     }
 

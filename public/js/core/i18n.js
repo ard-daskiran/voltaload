@@ -48,6 +48,13 @@ const MESSAGES = {
         "state.serverUnreachable": "Volta sunucusuna bağlanılamadı.",
         "state.invalidJson": "JSON Body geçersiz formatta.",
 
+        "connection.lostTitle": "Volta'yla bağlantı koptu",
+        "connection.lostText": "Volta kapanmış ya da yeniden başlıyor olabilir. Volta'yı yeniden başlatıp sayfayı yenile.",
+        "connection.restoredText": "Volta yeniden açıldı. Test yarıda kalmış olabilir, güncel durumu görmek için sayfayı yenile.",
+        "connection.reconnecting": "Yeniden bağlanmaya çalışılıyor",
+        "connection.reconnected": "Bağlantı yeniden kuruldu.",
+        "connection.reload": "Sayfayı yenile",
+
         // --- Grafik ---
         "chart.title": "Canlı Ölçüm",
         "chart.reset": "SIFIRLA",
@@ -484,6 +491,13 @@ const MESSAGES = {
         "state.error": "Error: {message}",
         "state.serverUnreachable": "Could not reach the Volta server.",
         "state.invalidJson": "JSON Body is not valid JSON.",
+
+        "connection.lostTitle": "Lost connection to Volta",
+        "connection.lostText": "Volta may have shut down or be restarting. Restart Volta and reload the page.",
+        "connection.restoredText": "Volta is back. The test may have been interrupted; reload the page to see its current state.",
+        "connection.reconnecting": "Trying to reconnect",
+        "connection.reconnected": "Connection restored.",
+        "connection.reload": "Reload page",
 
         "chart.title": "Live Measurement",
         "chart.reset": "RESET",

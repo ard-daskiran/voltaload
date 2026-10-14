@@ -90,6 +90,7 @@ export function createAnalysisCard({ onOpenRecommendations }) {
 
     function show(analysis, testRun) {
         if (analysis.status === "pending") return message("analysis.pending");
+        if (analysis.status === "tooShort") return message("analysis.tooShort");
         if (analysis.status !== "ready") return message("analysis.empty");
 
         const { verdict } = analysis;

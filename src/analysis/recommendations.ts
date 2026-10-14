@@ -2,7 +2,8 @@
 // Öneriler: hangi durumda ne yapılmalı. Arayüz her türün cümlesini sözlükten kurar.
 // Sonuçlar yanıltıcıysa (cevapların çoğu yönlendirme / 4xx / 429, neredeyse hepsi zaman aşımı
 // ya da isteklerin çoğu bağlantı hatası) kapasite önerileri çıkmaz: o durumda sunucunun gerçek
-// kapasitesi hakkında bir şey söylenemez.
+// kapasitesi hakkında bir şey söylenemez. Kararlı ama yavaş sunucuda da çıkmaz: sorun yük değil,
+// isteğin kendisi; yükle oynamak onu hızlandırmaz.
 
 import { THRESHOLDS as T } from "./thresholds.js";
 import type { GroupStats } from "./classify.js";
@@ -100,7 +101,8 @@ export function buildRecommendations(totals: GroupStats, verdict: Verdict): Reco
   if (verdict.slowButStable && totals.p95 !== null) list.push({ type: "slowButStable", p95: totals.p95 });
 
   // Kapasiteyle ilgili sonraki adım (sonuçlar yanıltıcı değilse)
-  const misleading = clientMajority || redirectMajority || rateLimited || tooSlow || connectionDominant;
+  const misleading =
+    clientMajority || redirectMajority || rateLimited || tooSlow || connectionDominant || verdict.slowButStable;
   if (!misleading) {
     const c = verdict.capacity;
     if (c.kind === "approx") {

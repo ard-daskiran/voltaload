@@ -68,10 +68,10 @@ export function aggregate(seconds: SecondStats[]): GroupStats {
 
   latencies.sort((a, b) => a - b);
 
-  // Saniye başına değerler (gerçekleşen RPS, ortalama hedef) sadece hedefin olduğu saniyelere bölünür.
-  // Test bittikten sonra gelen cevapların saniyeleri (hedef 0) ortalamayı düşürmesin.
-  const targetSeconds = seconds.filter((s) => s.targetRps > 0).length;
-  const n = Math.max(1, targetSeconds || seconds.length);
+  // Saniye başına değerler (gerçekleşen RPS, ortalama hedef) hedefin olduğu saniyelerin SÜRESİNE bölünür.
+  // Durdurulan testin son saniyesi kısmi olabilir (0,6 sn'de 180 istek = 300 RPS, 180 değil).
+  const targetSpan = seconds.filter((s) => s.targetRps > 0).reduce((sum, s) => sum + s.span, 0);
+  const n = targetSpan > 0 ? targetSpan : Math.max(1, seconds.length);
 
   return {
     secondCount: seconds.length,

@@ -36,12 +36,20 @@ function isAcceptable(step: StepResult): boolean {
 export function buildVerdict(steps: StepResult[], baseline: Baseline, outage: Outage | null): Verdict {
   const peak = steps[steps.length - 1];
 
+  // Sorunun tek sebebi sabit gecikme sınırıysa: yük değil, isteğin kendisi yavaş
+  const slowButStable =
+    !baseline.valid &&
+    peak.state !== "HEALTHY" &&
+    steps.every((s) => s.reasons.every((r) => r === "latencyAbsolute"));
+
   // Baştan itibaren üst üste kapasiteye sayılan kademe sayısı
   let acceptableCount = 0;
   while (acceptableCount < steps.length && isAcceptable(steps[acceptableCount])) acceptableCount++;
 
   let capacity: Capacity;
-  if (acceptableCount === steps.length) {
+  if (slowButStable || acceptableCount === steps.length) {
+    // Kararlı ama yavaşsa da yük karşılandı: hata yok, RPS tam, artış yok. Sorun yük değil,
+    // daha düşük yük de onu hızlandırmaz. Kapasite "≥ test edilen yük", durum yine gecikmeye göre.
     capacity = { kind: "atLeast", rps: peak.targetRps };
   } else if (acceptableCount === 0) {
     capacity = { kind: "below", rps: steps[0].targetRps };
@@ -52,12 +60,6 @@ export function buildVerdict(steps: StepResult[], baseline: Baseline, outage: Ou
       breakAt: steps[acceptableCount].targetRps,
     };
   }
-
-  // Sorunun tek sebebi sabit gecikme sınırıysa: yük değil, isteğin kendisi yavaş
-  const slowButStable =
-    !baseline.valid &&
-    peak.state !== "HEALTHY" &&
-    steps.every((s) => s.reasons.every((r) => r === "latencyAbsolute"));
 
   return { state: peak.state, capacity, slowButStable, outage };
 }

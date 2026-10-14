@@ -140,7 +140,8 @@ function gauge(state) {
 
 function resultSection(analysis, testRun) {
     if (analysis?.status !== "ready") {
-        return h("div", { class: "keep" }, sectionTitle(t("report.result")), h("p", {}, t("report.analysisUnavailable")));
+        const text = analysis?.status === "tooShort" ? t("analysis.tooShort") : t("report.analysisUnavailable");
+        return h("div", { class: "keep" }, sectionTitle(t("report.result")), h("p", {}, text));
     }
 
     const { verdict } = analysis;

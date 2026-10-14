@@ -55,8 +55,8 @@ export function analyzeSteps(seconds: SecondStats[], ranges: StepRange[], baseli
   const results: StepResult[] = [];
 
   for (const range of ranges) {
-    // Son kademe, test bittikten sonra gelen cevapları da kapsar
-    // (o istekler son kademede gönderildi; zaman aşımları 2,5 sn sonra kaydedilir)
+    // Son kademe analizin sonuna kadar uzanır (sonuçlar gönderildikleri saniyeye yazıldığı için
+    // test süresinden sonra saniye oluşmaz; bu sadece güvence)
     const isLast = range === ranges[ranges.length - 1];
     const to = isLast ? Infinity : range.to;
 

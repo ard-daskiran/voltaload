@@ -5,7 +5,7 @@ import { prisma } from "../db/prisma.js";
 import { profileOf } from "../services/testRunFormat.js";
 import { WORKER_LAG_WARNING_MS } from "../config.js";
 import { THRESHOLDS as T } from "./thresholds.js";
-import { buildSeconds, type SecondStats } from "./seconds.js";
+import { buildSeconds, type ResultRow, type SecondStats } from "./seconds.js";
 import { aggregate, classifyGroup } from "./classify.js";
 import { findBaseline, type Baseline } from "./baseline.js";
 import { stepRanges, analyzeSteps } from "./steps.js";
@@ -21,6 +21,10 @@ const END_EVENTS: Record<string, EndEventType> = {
   FAILED: "failed",
 };
 
+// Durdurulan testin son saniyesinin en az bu kadarı test içindeyse analize girer.
+// Daha azı (örneğin 10,05'te durdurmada 0,05 sn) birkaç istekten ibaret, sonuçları bozar.
+const MIN_PARTIAL_SECOND = 0.5;
+
 // Bağlantı koptuysa ve öncesinde sunucu sağlıklıysa: kesinti.
 // Kapasite yine temkinli kalır, sadece cümle "o ana kadar karşıladı, sonra koptu" der.
 function findOutage(seconds: SecondStats[], events: AnalysisEvent[], baseline: Baseline): Outage | null {
@@ -32,6 +36,13 @@ function findOutage(seconds: SecondStats[], events: AnalysisEvent[], baseline: B
 
   if (classifyGroup(before, baseline).state !== "HEALTHY") return null;
   return { second: lost.second, rps: Math.round(Math.max(...before.map((s) => s.targetRps))) };
+}
+
+// En son gönderilen isteğin anı (yarıda kalan testte kesin durma anı kayıtlı değil)
+function lastSentAt(rows: ResultRow[]): number {
+  let last = 0;
+  for (const row of rows) last = Math.max(last, row.timestamp.getTime() - row.responseTime);
+  return last;
 }
 
 export async function analyzeTestRun(id: string) {
@@ -54,19 +65,22 @@ export async function analyzeTestRun(id: string) {
   // Saniyeler testin başlangıcından sayılır. Eski testlerde başlangıç kaydı yok, ilk cevaptan sayılır.
   const origin = testRun.startedAt?.getTime() ?? rows[0].timestamp.getTime();
 
-  // Durdurulan, yarıda kalan ya da hatayla biten testte sadece o ana kadarki saniyeler analiz edilir.
-  // Yoksa durduktan sonraki "cevapsız" saniyeler, sunucu çökmüş gibi görünür.
-  // Yarıda kalan testte bitiş anı son kaydedilen sonuçtur: eski kayıtlarda bitiş anı olarak
-  // Volta'nın yeniden açıldığı an yazılmış olabilir.
+  // Analiz edilen süre (sn). Tamamlanan testte ayarlanan süre. Durdurulan, yarıda kalan ya da hatayla biten testte
+  // cevabı kaydedilmiş en son isteğin GÖNDERİLDİĞİ an. Durdurma anı değil: durdurunca yoldaki isteklerin cevapları
+  // hiç gelmez (her isteği 2 sn süren sunucuda son 2 saniyenin hepsi), onların saniyeleri "gönderildi ama cevap yok"
+  // görünüp sunucu çökmüş sanılmasın. Durduruluşta kaydedilemeyen son paket de böylece analizi bozmaz.
+  // (Yarıda kalan testte kesin durma anı zaten kayıtlı değil, eski kayıtlarda bitiş anı Volta'nın yeniden açıldığı an.)
   let effectiveDuration = testRun.duration;
   if (stopped) {
-    const endTime =
-      testRun.status === "INTERRUPTED" || !testRun.finishedAt ? rows[rows.length - 1].timestamp : testRun.finishedAt;
-    const stoppedAt = Math.floor((endTime.getTime() - origin) / 1000);
-    effectiveDuration = Math.max(1, Math.min(testRun.duration, stoppedAt));
+    const stopAt = Math.min(testRun.duration, (lastSentAt(rows) - origin) / 1000);
+    const whole = Math.floor(stopAt);
+    effectiveDuration = stopAt - whole >= MIN_PARTIAL_SECOND ? stopAt : whole;
   }
 
-  const allSeconds = buildSeconds(rows, {
+  // 1 saniyeden kısa testin analizi yanıltıcı olur (birkaç yüz milisaniyelik veri)
+  if (effectiveDuration < 1) return { status: "tooShort" as const };
+
+  const seconds = buildSeconds(rows, {
     origin,
     configuredDuration: testRun.duration,
     effectiveDuration,
@@ -74,10 +88,10 @@ export async function analyzeTestRun(id: string) {
     profile,
   });
 
-  // Tamamlanan testte süre bittikten sonra gelen cevaplar da analize girer (son kademeye eklenir).
-  // Durdurulan testte girmez.
-  const seconds = stopped ? allSeconds.filter((s) => s.inTest) : allSeconds;
-  const endSecond = stopped ? effectiveDuration : seconds[seconds.length - 1].index + 1;
+  // Olay listesinin son satırı: tamamlanan testte son cevabın GELDİĞİ saniye (zaman aşımları dahil test o an bitti),
+  // durdurulan testte durma anının saniyesi
+  const lastArrival = rows[rows.length - 1].timestamp.getTime();
+  const endSecond = stopped ? Math.floor(effectiveDuration) : Math.floor((lastArrival - origin) / 1000) + 1;
 
   const ranges = stepRanges(testRun.duration, profile, testRun.targetRps);
   const baseline = findBaseline(seconds, ranges[0].to);

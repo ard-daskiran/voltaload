@@ -57,7 +57,6 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   INVALID_STEP_COUNT: (p) => `Steps must be between ${p.min} and ${p.max}.`,
   STEP_TOO_SHORT: (p) => `Each step must last at least ${p.min}s. Increase the duration or reduce the steps.`,
   STEP_RPS_TOO_LOW: (p) => `Max RPS cannot be lower than the number of steps (${p.min}).`,
-  
   URL_MALFORMED: () => "Invalid URL format.",
   URL_PROTOCOL: () => "Only http and https addresses can be tested.",
   URL_UNSPECIFIED: () => "0.0.0.0 is not a target address. Use localhost instead.",
@@ -65,7 +64,6 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   NOT_LOCAL: () => "For security, only local addresses (localhost and private networks) can be tested.",
   SELF_TARGET: () => "Volta's own address cannot be tested. Enter the address of the project you want to test.",
   TARGET_UNREACHABLE: () => "Cannot reach the target. Make sure your project is running and the port is correct.",
-
   TEST_ALREADY_RUNNING: () => "A test is already running. Wait for it to finish or stop it.",
   START_FAILED: () => "The test could not be started.",
   NO_ACTIVE_TEST: () => "No running test was found.",
@@ -73,7 +71,6 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   TEST_RUNNING: () => "A running test cannot be deleted.",
   TEST_UNEXPECTED_ERROR: () => "An unexpected error occurred during the test.",
   WORKER_EXITED: () => "The test engine stopped unexpectedly.",
-
   TARGET_NAME_LENGTH: (p) => `Name must be between 1 and ${p.max} characters.`,
   TARGET_URL_EXISTS: (p) => `This URL is already saved as "${p.name}".`,
   TARGET_NAME_EXISTS: (p) => `The name "${p.name}" is already in use.`,
@@ -81,12 +78,10 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   URL_REQUIRED: () => "URL is required.",
   INVALID_ID: () => "Invalid entry.",
   TARGET_NOT_FOUND: () => "Entry not found.",
-
   BODY_TOO_LARGE: (p) => `The request body is too large (max ${p.max}).`,
   INVALID_JSON: () => "The request body is not valid JSON.",
   API_NOT_FOUND: () => "No such API endpoint.",
   INTERNAL_ERROR: () => "An unexpected server error occurred.",
-
   FORBIDDEN_HOST: (p) => `Volta can only be opened at http://localhost:${p.port} or http://127.0.0.1:${p.port}.`,
   FORBIDDEN_ORIGIN: () => "Requests from other websites are not allowed.",
 };

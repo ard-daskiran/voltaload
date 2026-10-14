@@ -1,5 +1,5 @@
 // Durum kodları hakkında bilgi: açıklama, kısa ad, kategori ve renk.
-// Hem anasayfa hem geçmiş sayfası kullanır.
+// Anasayfa, detay sayfası ve rapor kullanır.
 
 import { t } from "../core/i18n.js";
 

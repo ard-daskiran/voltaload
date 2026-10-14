@@ -94,8 +94,8 @@ export function verdictSentence(analysis, isStepped) {
     const connectionLost = recommendations.some((r) => r.type === "connection");
     return connectionLost ? `${sentence} ${t("verdict.connectionLost")}` : sentence;
 }
-// --- Olaylar ---
 
+// --- Olaylar ---
 export function eventText(e) {
     switch (e.type) {
         case "start":

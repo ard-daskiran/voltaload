@@ -9,7 +9,6 @@ import { MAX_URL_LENGTH, MAX_SEARCH_LENGTH } from "../config.js";
 
 const MAX_NAME_LENGTH = 40;
 
-
 // İsmin karşılaştırma için küçük harfli hali ("Test Sunucusu" → "test sunucusu")
 function nameKeyOf(name: string): string {
   return name.trim().toLocaleLowerCase("tr-TR");
@@ -97,7 +96,6 @@ export async function urlsMatchingName(search: string): Promise<string[]> {
   });
   return targets.map((t) => t.url);
 }
-
 
 // Test bitince "rehbere kaydet" önerisi için: URL kayıtlı mı, kaç kez test edilmiş?
 export async function suggestionFor(url: string) {

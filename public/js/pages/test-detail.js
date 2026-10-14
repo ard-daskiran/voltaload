@@ -23,7 +23,6 @@ import { shortUrl } from "../core/url.js";
 renderHeader();
 applyTranslations();
 attachHintsFromMarkup();
-document.title = t("detail.pageTitle");
 
 // Hata ekranının iki hali
 const ERRORS = {

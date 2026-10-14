@@ -81,8 +81,9 @@ export async function computeTestSummary(testRunId: string): Promise<TestSummary
     return row?.responseTime ?? null;
   }
 
-  // Gerçek süre: testin başlangıcından son cevaba kadar.
-  // (İlk cevaptan saymak, N cevap için N−1 aralık verir ve RPS'i az istekli testlerde şişirir.)
+  // Gerçek süre: testin başlangıcından son cevabın geldiği ana kadar (başlangıç kaydı olmayan eski testlerde ilk cevaptan).
+  // Son istek, süre bitmeden 1/RPS önce gönderildiği için çok kısa ve düşük RPS'li testlerde süre biraz kısa,
+  // gerçekleşen RPS biraz yüksek çıkar (10 RPS × 1 sn → ~11). Uzun testlerde fark kaybolur.
   let actualDurationMs = 0;
   const start = run?.startedAt ?? allAgg._min.timestamp;
   if (start && allAgg._max.timestamp) {

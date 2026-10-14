@@ -124,17 +124,10 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 io.on("connection", (socket) => {
-  console.log("Bir tarayıcı bağlandı:", socket.id);
-
+  // Test odasına katılma (canlı akışı dinlemek için). Sadece test kimliği biçimindeki değerler kabul edilir.
   socket.on("join-test", (testRunId: unknown) => {
-    // Sadece test kimliği biçimindeki değerler (rastgele ya da çok uzun değerler yok sayılır, terminale de yazılmaz)
     if (typeof testRunId !== "string" || !UUID_PATTERN.test(testRunId)) return;
     socket.join(testRunId);
-    console.log(`Socket ${socket.id}, ${testRunId} odasına katıldı`);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Tarayıcı bağlantısı koptu:", socket.id);
   });
 });
 
@@ -177,7 +170,7 @@ async function main() {
   // Önce ayarlar: geçersiz bir değerle (0 saniyelik test, yanlış port...) açılmasın, ne yanlış olduğunu söylesin
   const problems = validateConfig();
   if (problems.length > 0) {
-    console.error("Volta could not start: invalid settings in src/config.ts.");
+    console.error("Volta could not start: invalid settings (src/config.ts or .env).");
     for (const problem of problems) console.error(`  - ${problem}`);
     console.error("Fix them and restart Volta.");
     process.exit(1);

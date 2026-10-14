@@ -22,11 +22,8 @@ allowedRanges.addSubnet("fc00::", 7, "ipv6");
 // --- Tipler ---
 
 interface ResolvedTarget {
-  url: string;
-  hostname: string;
-  address: string; // Bağlanılacak, onaylanmış IP
+  address: string; // Bağlanılacak, onaylanmış IP (worker sadece buna bağlanır)
   family: 4 | 6;
-  port: number;
 }
 
 export type SecurityResult =
@@ -164,16 +161,7 @@ export async function resolveTarget(rawUrl: string): Promise<SecurityResult> {
   // 5. Bağlanılabilen ilk adresi seç (localhost hem IPv4 hem IPv6'ya çözülebilir)
   for (const candidate of check.candidates) {
     if (await canConnect(candidate.address, candidate.family, check.port)) {
-      return {
-        ok: true,
-        target: {
-          url: rawUrl,
-          hostname: check.hostname,
-          address: candidate.address,
-          family: candidate.family,
-          port: check.port,
-        },
-      };
+      return { ok: true, target: { address: candidate.address, family: candidate.family } };
     }
   }
 

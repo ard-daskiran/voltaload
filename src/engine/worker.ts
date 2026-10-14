@@ -16,7 +16,6 @@ const REQUEST_TIMEOUT_MS = 2500;
 type ErrorType = "TIMEOUT" | "CONNECTION_REFUSED" | "CONNECTION_RESET" | "NETWORK_ERROR";
 
 interface StartMessage {
-  testRunId: string;
   targetRps: number;
   durationSeconds: number;
   url: string;
@@ -103,7 +102,6 @@ async function makeRequest(
 
 port.on("message", async (message: StartMessage) => {
   const {
-    testRunId,
     targetRps,
     durationSeconds,
     url,
@@ -145,7 +143,7 @@ port.on("message", async (message: StartMessage) => {
     const lagMs = Number.isFinite(p99) ? Math.round(p99 / 1_000_000) : 0;
     loopDelay.reset();
 
-    port.postMessage({ type: "batch", testRunId, results: batch, lagMs });
+    port.postMessage({ type: "batch", results: batch, lagMs });
     batch = [];
   }
 
@@ -156,7 +154,7 @@ port.on("message", async (message: StartMessage) => {
 
   // Testin başlangıç anı: zamanlayıcının sıfır noktası (ilk istek bu anda gider).
   // Analiz, özet ve grafik saniyeleri buradan sayar.
-  port.postMessage({ type: "started", testRunId, startedAt: Date.now() });
+  port.postMessage({ type: "started", startedAt: Date.now() });
 
   await runScheduledLoop(
     targetRps,
@@ -182,5 +180,5 @@ port.on("message", async (message: StartMessage) => {
   loopDelay.disable();
 
   await agent.close();
-  port.postMessage({ type: "done", testRunId });
+  port.postMessage({ type: "done" });
 });

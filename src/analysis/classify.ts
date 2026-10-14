@@ -1,5 +1,6 @@
 // Bir grup saniyenin (bir kademe ya da sabit testin tamamı) durumu:
-// sağlıklı / sınırda / zorlandı / çöktü. Dört ölçünün en kötüsü belirler.
+// sağlıklı / sınırda / zorlandı / çöktü. Beş ölçünün en kötüsü belirler:
+// hata oranı, bağlantı hatası, başarılı/hedef oranı, gecikme, yükselme eğilimi.
 
 import { THRESHOLDS as T } from "./thresholds.js";
 import { median, type SecondStats } from "./seconds.js";  
@@ -25,7 +26,6 @@ function worst(a: HealthState, b: HealthState): HealthState {
 }
 
 export interface GroupStats {
-  secondCount: number;
   expected: number; // Hedeflenen toplam istek
   total: number;
   success: number;
@@ -75,7 +75,6 @@ export function aggregate(seconds: SecondStats[]): GroupStats {
   const n = targetSpan > 0 ? targetSpan : Math.max(1, seconds.length);
 
   return {
-    secondCount: seconds.length,
     expected,
     total,
     success,

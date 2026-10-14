@@ -8,7 +8,6 @@ import { renderReport } from "../report/report-sections.js";
 import { drawReportChart, windowPositions } from "../report/report-chart.js";
 
 applyTranslations();
-document.title = t("report.pageTitle");
 
 const testRunId = new URLSearchParams(window.location.search).get("id");
 const printButton = $("report-print");

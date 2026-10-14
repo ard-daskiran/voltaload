@@ -60,7 +60,6 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
     // --- Dışarıya açık fonksiyonlar ---
 
     // Testi başlatır. Başarılıysa { ok: true, testRunId }, değilse { ok: false, error } ya da { ok: false, unreachable: true }
-    // Testi başlatır. Başarılıysa { ok: true, testRunId }, değilse { ok: false, error } ya da { ok: false, unreachable: true }
     async function start(payload) {
         let response;
         try {

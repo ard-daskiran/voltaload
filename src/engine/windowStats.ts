@@ -1,5 +1,5 @@
 // Bir grup sonucun (canlı akışta 200ms'lik dilim) özeti.
-// Hem canlı akış (testRunManager) hem de sayfa yenilenince doldurma (routes) bu fonksiyonu kullanır.
+// Hem canlı akış (testRunManager) hem de detay sayfası / sayfa yenileme (services/resultQueries) bu fonksiyonu kullanır.
 
 export interface ResultLike {
   statusCode: number;
@@ -45,7 +45,6 @@ export function summarizeWindow(items: ResultLike[]) {
   const statusCounts: Record<string, number> = {};
   let errorCount = 0;
   let successCount = 0;
-  let connectionErrorCount = 0;
   let bytes = 0;
 
   for (const r of items) {
@@ -55,7 +54,6 @@ export function summarizeWindow(items: ResultLike[]) {
     if (isServerError(r)) errorCount++;
     else successCount++;
 
-    if (isConnectionError(r)) connectionErrorCount++;
     bytes += r.responseSize;
   }
 
@@ -73,7 +71,6 @@ export function summarizeWindow(items: ResultLike[]) {
     p99ResponseTime: percentileOf(latencies, 0.99),
     statusCounts,
     errorCount,
-    connectionErrorCount,
     bytes,
   };
 }

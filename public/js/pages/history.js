@@ -20,7 +20,6 @@ const FOCUS_COLOR = "rgba(100, 216, 215, 0.15)"; // secondary renginin %15'i
 
 renderHeader();
 applyTranslations();
-document.title = t("history.pageTitle");
 
 const searchInput = $("history-search");
 const methodButtons = document.querySelectorAll("[data-method]");

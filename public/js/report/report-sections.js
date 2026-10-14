@@ -22,7 +22,6 @@ import { REPORT_CHART_COLORS } from "./report-chart.js";
 import { latencyLevel } from "../core/latency.js";
 import { prettyJson } from "../core/json.js";
 
-
 // Beyaz zemine göre koyu durum renkleri (uygulamadaki renklerin karşılığı)
 const REPORT_HEALTH = {
     HEALTHY: "#0e8f8e",
@@ -63,14 +62,9 @@ function sectionTitle(text) {
     return h("h2", { class: "section-title" }, text);
 }
 
-function percent(value) {
-    return formatPercent(value);
-}
-
 function formatDate(iso) {
     return new Date(iso).toLocaleString(getLocale());
 }
-
 
 function profileText(testRun) {
     return testRun.loadProfile === "STEPPED"
@@ -178,7 +172,7 @@ function metricsSection(summary) {
         [t("chart.series.avg"), summary ? formatMs(summary.avgResponseTime) : "—"],
         [t("summary.p95"), summary ? formatMs(summary.p95) : "—"],
         [t("summary.p99"), summary ? formatMs(summary.p99) : "—"],
-        [t("summary.errorRate"), errorRate !== null ? percent(errorRate) : "—"],
+        [t("summary.errorRate"), errorRate !== null ? formatPercent(errorRate) : "—"],
         [t("summary.actualRps"), summary && seconds > 0 ? `${formatNumber(summary.totalRequests / seconds, 1)}` : "—"],
         [t("report.totalRequests"), summary ? formatNumber(summary.totalRequests) : "—"],
     ];
@@ -292,7 +286,7 @@ function stepsTable(steps) {
                     h("td", { class: "num" }, `${formatNumber(s.actualRps, 1)} RPS`),
                     h("td", { class: "num", style: latencyColor(s.avg) }, formatMs(s.avg)),
                     h("td", { class: "num", style: latencyColor(s.p95) }, formatMs(s.p95)),
-                    h("td", { class: "num", style: s.errorRate > 0 ? { color: REPORT_HEALTH.COLLAPSED } : {} }, percent(s.errorRate)),
+                    h("td", { class: "num", style: s.errorRate > 0 ? { color: REPORT_HEALTH.COLLAPSED } : {} }, formatPercent(s.errorRate)),
                     h("td", { style: { color: REPORT_HEALTH[s.state], fontWeight: "600" } }, `● ${healthLabel(s.state)}`)
                 )
             )
@@ -375,7 +369,7 @@ function statusCodesTable(statusCounts) {
                     h("td", { style: color ? { color, fontWeight: "600" } : { fontWeight: "600" } }, code),
                     h("td", {}, statusName(code)),
                     h("td", { class: "num" }, formatNumber(statusCounts[code])),
-                    h("td", { class: "num" }, percent(statusCounts[code] / total)),
+                    h("td", { class: "num" }, formatPercent(statusCounts[code] / total)),
                     h("td", {}, t(`status.tag.${category}`))
                 );
             })

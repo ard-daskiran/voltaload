@@ -1,5 +1,5 @@
 // Bildirim kutusu (toast): sağ altta birkaç saniye görünür, sonra solar.
-//   type: "success" (cyan ✓), "error" (kırmızı), "danger" (kırmızı, silme), "info" (sarı, soru)
+//   type: "success" (cyan ✓), "danger" (kırmızı, silme), "info" (sarı, soru)
 //   actions: [{ label, primary, onClick }] → butonlu bildirim; butona basınca bildirim kapanır
 //   Fare üzerindeyken süre durur, kullanıcı okurken kaybolmaz.
 // Başka bir sayfada gösterilecek bildirim için queueToast → o sayfa açılınca showQueuedToast.
@@ -11,7 +11,6 @@ const FADE_MS = 200;
 
 const STYLES = {
     success: { icon: "check_circle", color: "#64d8d7" },
-    error: { icon: "error", color: "#ff5555" },
     danger: { icon: "delete", color: "#ff5555" },
     info: { icon: "bookmark_add", color: "#f4c21a" },
 };

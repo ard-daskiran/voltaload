@@ -36,7 +36,6 @@ interface ResultItem {
 
 interface ActiveRun {
   testRunId: string;
-  startedAt: number;
   config: {
     url: string;
     method: string;
@@ -68,7 +67,7 @@ export function releaseTestSlot(): void {
 
 export function getActiveTestRun() {
   if (!activeRun) return null;
-  return { testRunId: activeRun.testRunId, startedAt: activeRun.startedAt, config: activeRun.config };
+  return { testRunId: activeRun.testRunId, config: activeRun.config };
 }
 
 
@@ -266,7 +265,6 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
 
     activeRun = {
       testRunId: params.testRunId,
-      startedAt: Date.now(),
       config: {
         url: params.url,
         method: params.method,
@@ -335,7 +333,6 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
     });
 
     worker.postMessage({
-      testRunId: params.testRunId,
       targetRps: params.targetRps,
       durationSeconds: params.durationSeconds,
       url: params.url,

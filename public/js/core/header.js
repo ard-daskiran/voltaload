@@ -3,8 +3,6 @@
 
 import { getLanguage, switchLanguage } from "./i18n.js";
 
-// Depo yayınlanınca gerçek adresle değiştirilecek
-const GITHUB_URL = "";
 export const VERSION = "v1.0";
 
 const NAV_ITEMS = [
@@ -54,21 +52,10 @@ export function renderHeader() {
         <nav class="hidden md:flex items-center h-full gap-6">${links}</nav>
       </div>
 
-      <div class="flex items-center gap-3">
-        <!-- Dil seçimi: değişince sayfa yenilenir -->
-        <div id="language-switch" role="group" data-i18n-title="nav.language"
-             class="flex items-center border border-border-subtle rounded-full p-0.5 font-label-caps text-[11px]">
-          ${languageButtons}
-        </div>
-
-                ${GITHUB_URL
-      ? `<a href="${GITHUB_URL}" target="_blank" rel="noopener noreferrer"
-                 class="flex items-center gap-2 bg-surface-container hover:bg-surface-bright border border-border-subtle px-3.5 py-1.5 rounded-full transition-colors group">
-                <span class="font-data-md text-primary font-bold text-sm tracking-tighter group-hover:text-secondary transition-colors">&lt;&gt;</span>
-                <span class="font-data-md text-on-surface text-sm" data-i18n="nav.github"></span>
-              </a>`
-      : ""
-    }
+      <!-- Dil seçimi: değişince sayfa yenilenir -->
+      <div id="language-switch" role="group" data-i18n-title="nav.language"
+           class="flex items-center border border-border-subtle rounded-full p-0.5 font-label-caps text-[11px]">
+        ${languageButtons}
       </div>
     </header>`;
 

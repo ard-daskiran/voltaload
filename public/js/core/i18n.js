@@ -10,7 +10,6 @@ const MESSAGES = {
         // --- Üst menü ---
         "nav.dashboard": "DASHBOARD",
         "nav.history": "TEST HISTORY",
-        "nav.github": "GitHub",
         "nav.language": "Dil",
 
         // --- Form ---
@@ -465,7 +464,6 @@ const MESSAGES = {
     en: {
         "nav.dashboard": "DASHBOARD",
         "nav.history": "TEST HISTORY",
-        "nav.github": "GitHub",
         "nav.language": "Language",
 
         "form.title": "Test Setup",

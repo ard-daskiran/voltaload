@@ -44,10 +44,22 @@ export type LocalUrlResult =
 
 // --- Yardımcılar ---
 
-// "::ffff:127.0.0.1" gibi IPv6 içine gömülü IPv4 adreslerini sade IPv4'e çevirir
+// IPv6 içine gömülü IPv4 adreslerini sade IPv4'e çevirir. İki yazımı da tanır:
+//   "::ffff:172.20.10.4" (noktalı; DNS cevaplarında görülür)
+//   "::ffff:ac14:a04"    (onaltılık; URL'den gelen adres her zaman bu biçimde, ayrıştırıcı çeviriyor)
+// Böylece adres kuralları ve "Volta'nın kendi adresi" kontrolü her iki yazımda aynı sonucu verir.
 function normalizeAddress(address: string, family: number): Candidate {
-  const mapped = address.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
-  if (mapped) return { address: mapped[1], family: 4 };
+  const dotted = address.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (dotted) return { address: dotted[1], family: 4 };
+
+  const hex = address.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (hex) {
+    const high = parseInt(hex[1], 16);
+    const low = parseInt(hex[2], 16);
+    const ipv4 = [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
+    return { address: ipv4, family: 4 };
+  }
+
   return { address, family: family === 6 ? 6 : 4 };
 }
 

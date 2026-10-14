@@ -104,11 +104,17 @@ export function createTestForm() {
 
         rpsInput.min = limits.minTargetRps;
         rpsInput.max = limits.maxTargetRps;
-        rpsInput.placeholder = t("form.minPlaceholder", { min: limits.minTargetRps });
+        rpsInput.placeholder = t("form.rangePlaceholder", {
+            min: formatNumber(limits.minTargetRps),
+            max: formatNumber(limits.maxTargetRps),
+        });
 
         durationInput.min = limits.minDurationSeconds;
         durationInput.max = limits.maxDurationSeconds;
-        durationInput.placeholder = t("form.minPlaceholder", { min: limits.minDurationSeconds });
+        durationInput.placeholder = t("form.rangePlaceholder", {
+            min: formatNumber(limits.minDurationSeconds),
+            max: formatNumber(limits.maxDurationSeconds),
+        });
 
         stepCountInput.min = limits.minStepCount;
         stepCountInput.max = limits.maxStepCount;

@@ -5,7 +5,10 @@
 // Volta'nın arayüzünün çalıştığı adres ve port.
 // 127.0.0.1: sadece bu bilgisayardan erişilebilir, aynı ağdaki başkaları erişemez.
 export const VOLTA_HOST = "127.0.0.1";
-export const VOLTA_PORT = Number(process.env.PORT ?? 4400);
+// Port .env'deki VOLTA_PORT'tan (yoksa 4400). Adı bilerek "PORT" değil: birçok geliştirici kendi projesi için
+// terminalinde PORT=3000 ayarlar, Volta da oradan açılmaya çalışıp test edilen projeyle çakışmasın.
+// Adres (VOLTA_HOST) .env'den değiştirilemez: Volta yanlışlıkla bütün ağa açılmasın.
+export const VOLTA_PORT = Number(process.env.VOLTA_PORT ?? 4400);
 
 // Volta'ya tarayıcıdan sadece bu adlarla ulaşılabilir (port VOLTA_PORT). Başka bir adla gelen istekler reddedilir:
 // kötü niyetli bir sitenin kendi alan adını 127.0.0.1'e çevirip tarayıcı üzerinden Volta'yı kullanmasını
@@ -73,7 +76,7 @@ export function validateConfig(): string[] {
 
   // Port: ortam değişkeninden geliyor, "abc" ya da boş olabilir
   if (!Number.isInteger(VOLTA_PORT) || VOLTA_PORT < 1 || VOLTA_PORT > 65535) {
-    problems.push(`Port must be a whole number between 1 and 65535 (PORT environment variable: "${process.env.PORT}")`);
+    problems.push(`VOLTA_PORT must be a whole number between 1 and 65535 (current: "${process.env.VOLTA_PORT}")`);
   }
 
   // Test sınırları: 0 saniyelik ya da saniyede 0 istek gönderen test anlamsız

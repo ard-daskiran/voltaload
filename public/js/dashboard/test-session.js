@@ -60,21 +60,27 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
     // --- Dışarıya açık fonksiyonlar ---
 
     // Testi başlatır. Başarılıysa { ok: true, testRunId }, değilse { ok: false, error } ya da { ok: false, unreachable: true }
+    // Testi başlatır. Başarılıysa { ok: true, testRunId }, değilse { ok: false, error } ya da { ok: false, unreachable: true }
     async function start(payload) {
+        let response;
         try {
-            const response = await fetch("/api/test-run", {
+            response = await fetch("/api/test-run", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
-            const data = await response.json();
-
-            if (!response.ok) return { ok: false, error: apiErrorMessage(data, "error.START_FAILED") };
-            return { ok: true, testRunId: data.testRunId };
         } catch (err) {
+            // İstek hiç gidemedi: Volta kapalı
             console.error(err);
             return { ok: false, unreachable: true };
         }
+
+        // Cevap geldi ama JSON değilse (beklenmez) bu "ulaşılamadı" değil, "başlatılamadı"
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.testRunId) {
+            return { ok: false, error: apiErrorMessage(data, "error.START_FAILED") };
+        }
+        return { ok: true, testRunId: data.testRunId };
     }
 
     // Başlatılan testin canlı akışını dinlemeye başla (ekran hazırlandıktan sonra çağrılır)

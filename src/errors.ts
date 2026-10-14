@@ -35,7 +35,12 @@ export type ErrorCode =
   | "TARGET_EXISTS"
   | "URL_REQUIRED"
   | "INVALID_ID"
-  | "TARGET_NOT_FOUND";
+  | "TARGET_NOT_FOUND"
+  // Genel (gövde okunamadı, adres yok, beklenmeyen hata)
+  | "BODY_TOO_LARGE"
+  | "INVALID_JSON"
+  | "API_NOT_FOUND"
+  | "INTERNAL_ERROR";
 
 type Params = Record<string, string | number>;
 
@@ -73,6 +78,11 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   URL_REQUIRED: () => "URL is required.",
   INVALID_ID: () => "Invalid entry.",
   TARGET_NOT_FOUND: () => "Entry not found.",
+
+  BODY_TOO_LARGE: (p) => `The request body is too large (max ${p.max}).`,
+  INVALID_JSON: () => "The request body is not valid JSON.",
+  API_NOT_FOUND: () => "No such API endpoint.",
+  INTERNAL_ERROR: () => "An unexpected server error occurred.",
 };
 
 export interface ApiError {

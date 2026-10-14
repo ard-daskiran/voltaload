@@ -4,6 +4,7 @@
 import { $ } from "../core/dom.js";
 import { t, formatNumber } from "../core/i18n.js";
 import { takeRerunSettings } from "../core/rerun.js";
+import { withDefaultScheme } from "../core/url.js";
 
 // Dil değişince sayfa yenilenir: formdaki yazılmış ama başlatılmamış değerler bu anahtarla korunur
 const DRAFT_STORAGE_KEY = "volta-form-draft";
@@ -146,6 +147,10 @@ export function createTestForm() {
             if (error) return { ok: false, error };
         }
 
+        // "localhost:5050/health" → "http://localhost:5050/health" (kutuda da görünsün, neyin test edildiği belli olsun)
+        const url = withDefaultScheme(urlInput.value);
+        urlInput.value = url;
+
         let body;
         if (methodSelect.value === "POST" && bodyInput.value.trim()) {
             try {
@@ -158,7 +163,7 @@ export function createTestForm() {
         return {
             ok: true,
             payload: {
-                url: urlInput.value.trim(),
+                url,
                 method: methodSelect.value,
                 body,
                 targetRps,

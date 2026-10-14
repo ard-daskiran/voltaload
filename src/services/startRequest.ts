@@ -8,6 +8,7 @@ import {
   MIN_STEP_COUNT,
   MAX_STEP_COUNT,
   MIN_STEP_DURATION_SECONDS,
+  MAX_URL_LENGTH,
 } from "../config.js";
 
 const ALLOWED_METHODS = ["GET", "POST"];
@@ -22,9 +23,11 @@ export interface StartRequest {
 }
 
 export function validateStartRequest(input: any): { ok: true; value: StartRequest } | { ok: false; error: ApiError } {
-  const { url, method = "GET", body, targetRps, duration, loadProfile = "CONSTANT", stepCount } = input ?? {};
+  const { url: rawUrl, method = "GET", body, targetRps, duration, loadProfile = "CONSTANT", stepCount } = input ?? {};
 
-  if (typeof url !== "string" || url.length === 0) {
+  // Baştaki ve sondaki boşluklar silinir (yoksa rehberdeki ismiyle eşleşmez). Rehberle aynı uzunluk sınırı.
+  const url = typeof rawUrl === "string" ? rawUrl.trim() : "";
+  if (url.length === 0 || url.length > MAX_URL_LENGTH) {
     return { ok: false, error: apiError("INVALID_URL") };
   }
 
@@ -62,7 +65,8 @@ export function validateStartRequest(input: any): { ok: true; value: StartReques
     value: {
       url,
       method,
-      body,
+      // GET testinde gövde gönderilmez, kaydedilmesin de (detay sayfası onu "JSON Body" diye göstermesin)
+      body: method === "GET" ? undefined : body,
       targetRps,
       duration,
       profile: loadProfile === "STEPPED" ? { type: "STEPPED", stepCount } : { type: "CONSTANT" },

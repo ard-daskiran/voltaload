@@ -6,6 +6,7 @@ import { t } from "../core/i18n.js";
 import { confirmDialog } from "../core/confirm-dialog.js";
 import { showToast } from "../core/toast.js";
 import { apiErrorMessage } from "../core/api-error.js";
+import { withDefaultScheme } from "../core/url.js";
 
 function el(tag, className = "", text) {
     const node = document.createElement(tag);
@@ -237,11 +238,15 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         refs.saveBtn.disabled = true;
         refs.saveBtn.textContent = t("book.saving");
 
+        // Test formundaki gibi: protokol yazılmadıysa "http://"
+        const url = withDefaultScheme(refs.urlInput.value);
+        refs.urlInput.value = url;
+
         try {
             const response = await fetch("/api/targets", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: refs.nameInput.value, url: refs.urlInput.value }),
+                body: JSON.stringify({ name: refs.nameInput.value, url }),
             });
             const data = await response.json().catch(() => ({}));
 

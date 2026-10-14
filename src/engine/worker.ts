@@ -117,6 +117,10 @@ port.on("message", async (message: StartMessage) => {
   // Node adres sorgusunu iki biçimde yapabilir (tek adres ya da liste), ikisine de cevap veriyoruz.
   const agent = new Agent({
     connect: {
+      // Sertifika doğrulaması kapalı: yerel HTTPS sunucuları neredeyse hep kendinden imzalı sertifika kullanır
+      // (mkcert, Vite --https gibi), doğrulama açıkken bütün istekler "ağ hatası" olur. Hedefler zaten sadece
+      // yerel adresler (security.ts); curl -k ve Postman'in "SSL doğrulama" ayarı da aynısını yapar.
+      rejectUnauthorized: false,
       lookup: (_hostname: string, options: any, callback: any) => {
         if (options?.all) {
           callback(null, [{ address: pinnedAddress, family: pinnedFamily }]);
@@ -149,8 +153,8 @@ port.on("message", async (message: StartMessage) => {
 
   const inFlight = new Set<Promise<void>>();
 
-  // Testin başlangıç anı: zamanlayıcının sıfır noktası. İlk istek bundan 1/RPS saniye sonra atılır,
-  // bu yüzden saniyeler ilk cevaptan değil buradan sayılmalı.
+  // Testin başlangıç anı: zamanlayıcının sıfır noktası (ilk istek bu anda gider).
+  // Analiz, özet ve grafik saniyeleri buradan sayar.
   port.postMessage({ type: "started", testRunId, startedAt: Date.now() });
 
   await runScheduledLoop(

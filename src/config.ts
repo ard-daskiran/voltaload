@@ -25,3 +25,6 @@ export const DB_FLUSH_INTERVAL_MS = 500;
 
 // Worker'ın kendi gecikmesi bu değeri aşarsa "Volta zorlanıyor" uyarısı verilir
 export const WORKER_LAG_WARNING_MS = 50;
+
+// Hedef URL'nin en fazla uzunluğu (test başlatma ve URL rehberi)
+export const MAX_URL_LENGTH = 2000;

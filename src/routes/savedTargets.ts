@@ -33,10 +33,11 @@ export function createSavedTargetRouter(): Router {
 
   // Kayıt silme
   router.delete("/:id", async (req, res) => {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id)) {
+    // Sadece rakamlar ("0x28", "1e1" gibi yazımlar da sayıya çevrilebiliyordu)
+    if (!/^\d+$/.test(req.params.id)) {
       return res.status(400).json(errorBody(apiError("INVALID_ID")));
     }
+    const id = Number(req.params.id);
 
     const deleted = await deleteSavedTarget(id);
     if (!deleted) {

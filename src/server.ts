@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import path from "node:path";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
@@ -7,6 +7,7 @@ import { prisma } from "./db/prisma.js";
 import { computeTestSummary } from "./engine/summary.js";
 import { VOLTA_HOST, VOLTA_PORT } from "./config.js";
 import { createSavedTargetRouter } from "./routes/savedTargets.js";
+import { apiError, errorBody } from "./errors.js";
 
 const app = express();
 
@@ -22,6 +23,28 @@ export const io = new Server(httpServer);
 
 app.use("/api/test-run", createTestRunRouter(io));
 app.use("/api/targets", createSavedTargetRouter());
+
+
+// /api altında bulunamayan adresler: Express'in HTML sayfası yerine JSON
+app.use("/api", (req, res) => {
+  res.status(404).json(errorBody(apiError("API_NOT_FOUND")));
+});
+
+// Hata yakalayıcı: gövde okunurken ya da bir rotada çıkan hatalar. En sonda olmalı (dört parametreli).
+// Cevap her zaman { error, code } biçiminde; yığın izi ve dosya yolları kullanıcıya gönderilmez, terminale yazılır.
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  if (res.headersSent) return next(err);
+
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json(errorBody(apiError("BODY_TOO_LARGE", { max: "100 KB" })));
+  }
+  if (err?.type === "entity.parse.failed") {
+    return res.status(400).json(errorBody(apiError("INVALID_JSON")));
+  }
+
+  console.error("Beklenmeyen sunucu hatası:", err);
+  res.status(500).json(errorBody(apiError("INTERNAL_ERROR")));
+});
 
 io.on("connection", (socket) => {
   console.log("Bir tarayıcı bağlandı:", socket.id);

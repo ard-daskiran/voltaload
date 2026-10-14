@@ -450,6 +450,10 @@ const MESSAGES = {
         "error.URL_REQUIRED": "URL gerekli.",
         "error.INVALID_ID": "Geçersiz kayıt.",
         "error.TARGET_NOT_FOUND": "Kayıt bulunamadı.",
+        "error.BODY_TOO_LARGE": "JSON gövdesi çok büyük (en fazla {max}).",
+        "error.INVALID_JSON": "Gövde geçerli bir JSON değil.",
+        "error.API_NOT_FOUND": "Böyle bir API adresi yok.",
+        "error.INTERNAL_ERROR": "Volta'da beklenmeyen bir hata oluştu. Ayrıntılar Volta'nın terminalinde.",
 
     },
 
@@ -878,6 +882,11 @@ const MESSAGES = {
         "error.URL_REQUIRED": "URL is required.",
         "error.INVALID_ID": "Invalid entry.",
         "error.TARGET_NOT_FOUND": "Entry not found.",
+
+        "error.BODY_TOO_LARGE": "The JSON body is too large (max {max}).",
+        "error.INVALID_JSON": "The body is not valid JSON.",
+        "error.API_NOT_FOUND": "No such API endpoint.",
+        "error.INTERNAL_ERROR": "An unexpected error occurred in Volta. Details are in Volta's terminal.",
     },
 };
 

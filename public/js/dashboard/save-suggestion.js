@@ -1,3 +1,4 @@
+// save-suggestion.js
 // Test bitince "bu adresi rehbere kaydetmek ister misin?" önerisi.
 // Kurallar:
 //   - URL rehberde kayıtlı değilse ve en az MIN_RUNS kez test edilmişse (bu test dahil)
@@ -6,6 +7,7 @@
 
 import { t } from "../core/i18n.js";
 import { showToast } from "../core/toast.js";
+import { shortUrl } from "../core/url.js";
 
 const MIN_RUNS = 2; // 1 yapılırsa ilk testte de sorar
 const SUGGEST_DURATION_MS = 10_000;
@@ -44,7 +46,7 @@ export function createSaveSuggestion({ onSave }) {
             if (saved || runCount < MIN_RUNS) return;
 
             showToast(t("suggest.title"), {
-                detail: url.replace(/^https?:\/\//, ""),
+                detail: shortUrl(url),
                 type: "info",
                 durationMs: SUGGEST_DURATION_MS,
                 actions: [

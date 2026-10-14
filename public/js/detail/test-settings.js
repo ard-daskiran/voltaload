@@ -4,16 +4,7 @@ import { $ } from "../core/dom.js";
 import { t, formatNumber, getLocale } from "../core/i18n.js";
 import { runStatusStyle, runStatusLabel } from "../status/run-status.js";
 import { rerunWith } from "../core/rerun.js";
-
-
-// Kayıttaki body JSON metni: okunaklı olsun diye girintili yaz, bozuksa olduğu gibi
-function prettyBody(body) {
-    try {
-        return JSON.stringify(JSON.parse(body), null, 2);
-    } catch {
-        return body;
-    }
-}
+import { prettyJson } from "../core/json.js";
 
 function renderStatus(el, status) {
     const style = runStatusStyle(status);
@@ -57,7 +48,7 @@ export function createTestSettings() {
 
         const hasBody = Boolean(testRun.body);
         $("d-body-block").hidden = !hasBody;
-        if (hasBody) $("d-body").textContent = prettyBody(testRun.body);
+        if (hasBody) $("d-body").textContent = prettyJson(testRun.body);
     }
 
     // Ayarları anasayfaya bırak ve oraya git (form bu ayarlarla dolar)

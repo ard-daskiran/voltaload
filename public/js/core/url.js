@@ -1,4 +1,6 @@
 // url.js
+// Adreslerle ilgili küçük yardımcılar (arayüz).
+
 // Adres bir protokolle ("http://", "https://") başlamıyorsa başına "http://" ekler, tarayıcı adres çubuğu gibi.
 //   "localhost:3000/api"      → "http://localhost:3000/api"
 //   "https://localhost:3000"  → değişmez
@@ -8,4 +10,9 @@ export function withDefaultScheme(url) {
     // Sadece BAŞTA bir protokol var mı bak ("…?next=http://…" gibi sorgu dizeleri yanıltmasın)
     if (!trimmed || /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed)) return trimmed;
     return `http://${trimmed}`;
+}
+
+// Ekranda kısa gösterim: baştaki "http://" ya da "https://" atılır
+export function shortUrl(url) {
+    return url.replace(/^https?:\/\//, "");
 }

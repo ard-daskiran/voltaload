@@ -3,7 +3,8 @@
 // Değilse (sunucu baştan zorlandıysa) sadece sabit sınırlar, hata ve RPS kuralları uygulanır.
 
 import { THRESHOLDS as T } from "./thresholds.js";
-import { percentile, median, type SecondStats } from "./seconds.js";
+import { median, type SecondStats } from "./seconds.js";
+import { percentileOf } from "../engine/windowStats.js";
 import { aggregate } from "./classify.js";
 
 export interface Baseline {
@@ -27,7 +28,7 @@ export function findBaseline(seconds: SecondStats[], limitIndex: number): Baseli
   if (candidates.length === 0) candidates = inRange.slice(0, T.baselineSeconds);
   if (candidates.length === 0) return { valid: false, measured: false, p95: null };
 
-  const p95 = median(candidates.map((s) => percentile(s.latencies, 0.95)!))!;
+  const p95 = median(candidates.map((s) => percentileOf(s.latencies, 0.95)!))!;
   const stats = aggregate(candidates);
 
   const healthy =

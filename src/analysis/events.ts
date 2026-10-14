@@ -4,11 +4,11 @@
 // Bağlantı hataları kendi olayıyla gösterilir ("Sunucuya bağlanılamıyor"), aynı şey iki kez yazılmasın.
 
 import { THRESHOLDS as T } from "./thresholds.js";
-import { percentile, type SecondStats } from "./seconds.js";
+import { type SecondStats } from "./seconds.js";
 import { latencyLimits } from "./classify.js";
 import type { Baseline } from "./baseline.js";
 import type { StepRange, StepResult } from "./steps.js";
-import { isServerError } from "../engine/windowStats.js";
+import { isServerError, isConnectionError, percentileOf } from "../engine/windowStats.js";
 
 export type AnalysisEvent =
   | { type: "start"; second: number; rps: number }
@@ -25,7 +25,6 @@ export type AnalysisEvent =
 // Testin nasıl bittiği: tamamlandı, durduruldu, yarıda kaldı (Volta kapandı), hatayla bitti
 export type EndEventType = "end" | "stopped" | "interrupted" | "failed";
 
-const CONNECTION_TYPES = ["CONNECTION_REFUSED", "CONNECTION_RESET", "NETWORK_ERROR"];
 
 // Koşulun üst üste "sustainedSeconds" saniye sağlandığı ilk saniye
 function firstSustained(seconds: SecondStats[], test: (s: SecondStats) => boolean, fromPosition = 0): number {
@@ -37,11 +36,13 @@ function firstSustained(seconds: SecondStats[], test: (s: SecondStats) => boolea
   return -1;
 }
 
-// Bir saniyedeki cevap tarafı hata kodları (5xx ve zaman aşımı; bağlantı hataları hariç)
+// Bir saniyedeki cevap tarafı hata kodları (5xx ve zaman aşımı; bağlantı hataları hariç).
+// Durum kodları sayıyla ("503"), cevapsızlar hata türüyle ("TIMEOUT") anahtarlanmış.
 function responseErrorCodes(second: SecondStats): string[] {
   return Object.keys(second.statusCounts)
-    .filter((code) => !CONNECTION_TYPES.includes(code))
-    .filter((code) => isServerError({ statusCode: Number(code) || 0, errorType: Number(code) ? null : code }))
+    .map((code) => ({ code, statusCode: Number(code) || 0, errorType: Number(code) ? null : code }))
+    .filter((r) => isServerError(r) && !isConnectionError(r))
+    .map((r) => r.code)
     .sort();
 }
 
@@ -79,7 +80,7 @@ export function buildEvents(
   const limits = latencyLimits(baseline);
   if (limits) {
     const i = firstSustained(seconds, (s) => {
-      const p95 = percentile(s.latencies, 0.95);
+      const p95 = percentileOf(s.latencies, 0.95);
       return p95 !== null && p95 >= limits.borderline;
     });
     if (i >= 0) {
@@ -87,7 +88,7 @@ export function buildEvents(
         type: "latencyRise",
         second: seconds[i].index,
         from: baseline.p95!,
-        to: percentile(seconds[i].latencies, 0.95)!,
+        to: percentileOf(seconds[i].latencies, 0.95)!,
       });
     }
   } else if (baseline.measured) {

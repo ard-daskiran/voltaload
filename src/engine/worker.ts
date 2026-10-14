@@ -2,6 +2,7 @@ import { parentPort } from "node:worker_threads";
 import { monitorEventLoopDelay, performance } from "node:perf_hooks";
 import { Agent, request } from "undici";
 import { runScheduledLoop, type LoadProfile } from "./scheduler.js";
+import { WORKER_BATCH_INTERVAL_MS } from "../config.js";
 
 if (!parentPort) {
   throw new Error("Bu dosya sadece bir worker thread içinde çalıştırılmalı.");
@@ -10,7 +11,7 @@ if (!parentPort) {
 const port = parentPort;
 
 const REQUEST_TIMEOUT_MS = 2500;
-const FLUSH_INTERVAL_MS = 100;
+
 
 type ErrorType = "TIMEOUT" | "CONNECTION_REFUSED" | "CONNECTION_RESET" | "NETWORK_ERROR";
 
@@ -149,7 +150,7 @@ port.on("message", async (message: StartMessage) => {
   }
 
   // Sayıya göre değil, zamana göre gönder: sunucu yavaşlasa da grafik akmaya devam eder
-  const flushTimer = setInterval(flush, FLUSH_INTERVAL_MS);
+  const flushTimer = setInterval(flush, WORKER_BATCH_INTERVAL_MS);
 
   const inFlight = new Set<Promise<void>>();
 

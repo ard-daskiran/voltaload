@@ -1,3 +1,4 @@
+// test-detail.js
 // Test detay sayfası (/test.html?id=...): parçaları kurar ve testin verisini yükler.
 // Grafik, durum kodu kartı ve saniyelik toplama anasayfadakilerin aynısı.
 // Analiz, sayfanın geri kalanı göründükten sonra ayrıca yüklenir (bir sorun olursa sayfa etkilenmez).
@@ -17,6 +18,7 @@ import { createAnalysisCard } from "../detail/analysis-card.js";
 import { createStepsTable } from "../detail/steps-table.js";
 import { openRecommendations } from "../detail/recommendations-dialog.js";
 import { getReturnUrl } from "../history/return-to-list.js";
+import { shortUrl } from "../core/url.js";
 
 renderHeader();
 applyTranslations();
@@ -174,7 +176,7 @@ function setupDelete(testRun) {
 
         // Silindiyse listeye, kaldığın yere dön. Bildirim liste açılınca gösterilir.
         if (deleted) {
-            queueToast(t("deleteTest.toast"), { detail: testRun.url.replace(/^https?:\/\//, ""), type: "danger" });
+            queueToast(t("deleteTest.toast"), { detail: shortUrl(testRun.url), type: "danger" });
             window.location.href = returnUrl;
         }
     });

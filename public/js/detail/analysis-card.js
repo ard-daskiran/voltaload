@@ -1,7 +1,7 @@
 // Detay sayfasının analiz kartı: durum, küçük gösterge, tahmini kapasite, sonuç cümlesi, uyarılar, olaylar.
 // Öneriler ayrı bir pencerede (kartın sağ altındaki buton).
 
-import { $ } from "../core/dom.js";
+import { $, el } from "../core/dom.js";
 import { t } from "../core/i18n.js";
 import {
     HEALTH_COLORS,
@@ -13,12 +13,7 @@ import {
     eventColor,
 } from "../analysis/analysis-text.js";
 
-function el(tag, className = "", text) {
-    const node = document.createElement(tag);
-    node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
+
 
 // Küçük gösterge: dört renkli bölge, bulunulan bölge parlak ve altında ok
 function gauge(state) {

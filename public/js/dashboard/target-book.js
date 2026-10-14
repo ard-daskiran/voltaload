@@ -6,21 +6,12 @@ import { t } from "../core/i18n.js";
 import { confirmDialog } from "../core/confirm-dialog.js";
 import { showToast } from "../core/toast.js";
 import { apiErrorMessage } from "../core/api-error.js";
-import { withDefaultScheme } from "../core/url.js";
+import { withDefaultScheme, shortUrl } from "../core/url.js";
+import { el } from "../core/dom.js";
 
-function el(tag, className = "", text) {
-    const node = document.createElement(tag);
-    node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
 
 function icon(name, className = "text-[18px]") {
     return el("span", `material-symbols-outlined block ${className}`, name);
-}
-
-function shortUrl(url) {
-    return url.replace(/^https?:\/\//, "");
 }
 
 function normalize(text) {

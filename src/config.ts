@@ -36,11 +36,20 @@ export const CONNECT_CHECK_TIMEOUT_MS = 2000;
 export const LIVE_WINDOW_MS = 200;
 export const DB_FLUSH_INTERVAL_MS = 500;
 
+
+// Worker sonuçları bu aralıkla toplu gönderir. Canlı yayın bir dilimi, süresi dolduktan LIVE_EMIT_DELAY_MS sonra
+// gönderir: o dilime ait son paket de yetişsin diye bu değer WORKER_BATCH_INTERVAL_MS'ten büyük olmalı.
+export const WORKER_BATCH_INTERVAL_MS = 100;
+export const LIVE_EMIT_DELAY_MS = 150;
+
 // Worker'ın kendi gecikmesi bu değeri aşarsa "Volta zorlanıyor" uyarısı verilir
 export const WORKER_LAG_WARNING_MS = 50;
 
 // Hedef URL'nin en fazla uzunluğu (test başlatma ve URL rehberi)
 export const MAX_URL_LENGTH = 2000;
+
+// Arama kutularına yazılabilecek en uzun metin (geçmiş listesi ve URL rehberi)
+export const MAX_SEARCH_LENGTH = 200;
 
 // --- Ayarların kontrolü ---
 // Volta açılırken çalışır (server.ts). Buradaki kurallar kodun doğru çalışması için şart:
@@ -107,6 +116,14 @@ export function validateConfig(): string[] {
   positive("CONNECT_CHECK_TIMEOUT_MS", CONNECT_CHECK_TIMEOUT_MS);
   positive("DB_FLUSH_INTERVAL_MS", DB_FLUSH_INTERVAL_MS);
   positive("WORKER_LAG_WARNING_MS", WORKER_LAG_WARNING_MS);
+  
+  positive("WORKER_BATCH_INTERVAL_MS", WORKER_BATCH_INTERVAL_MS);
+  positive("LIVE_EMIT_DELAY_MS", LIVE_EMIT_DELAY_MS);
+  if (LIVE_EMIT_DELAY_MS <= WORKER_BATCH_INTERVAL_MS) {
+    problems.push(
+      `LIVE_EMIT_DELAY_MS (${LIVE_EMIT_DELAY_MS}) must be greater than WORKER_BATCH_INTERVAL_MS (${WORKER_BATCH_INTERVAL_MS})`
+    );
+  }
 
   // Grafik saniyeleri dilimlerden toplar: bir saniye tam sayıda dilim olmalı
   wholeAtLeast("LIVE_WINDOW_MS", LIVE_WINDOW_MS, 1);
@@ -115,6 +132,7 @@ export function validateConfig(): string[] {
   }
 
   wholeAtLeast("MAX_URL_LENGTH", MAX_URL_LENGTH, 1);
-
+  wholeAtLeast("MAX_SEARCH_LENGTH", MAX_SEARCH_LENGTH, 1);
+  
   return problems;
 }

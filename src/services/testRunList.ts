@@ -5,10 +5,10 @@
 import { prisma } from "../db/prisma.js";
 import { serializeRun } from "./testRunFormat.js";
 import { targetNamesFor, urlsMatchingName } from "./savedTargets.js";
+import { MAX_SEARCH_LENGTH } from "../config.js";
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
-const MAX_SEARCH_LENGTH = 200;
 
 export interface ListQuery {
   page: number;

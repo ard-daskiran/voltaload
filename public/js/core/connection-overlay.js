@@ -6,17 +6,12 @@
 //   - "Sayfayı yenile" butonu Volta geri gelene kadar pasif (kapalıyken yenilemek "siteye ulaşılamıyor" gösterir)
 
 import { t } from "./i18n.js";
+import { el } from "./dom.js";
 
 const SHOW_DELAY_MS = 1500;
 const DOTS_INTERVAL_MS = 400; // "..." animasyonunun hızı
 const DOT_FRAMES = [".", "..", "..."];
 
-function el(tag, className = "", text) {
-    const node = document.createElement(tag);
-    node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
 
 export function createConnectionOverlay() {
     let overlay = null;

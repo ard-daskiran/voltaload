@@ -20,6 +20,7 @@ import {
 } from "../analysis/analysis-text.js";
 import { REPORT_CHART_COLORS } from "./report-chart.js";
 import { latencyLevel } from "../core/latency.js";
+import { prettyJson } from "../core/json.js";
 
 
 // Beyaz zemine göre koyu durum renkleri (uygulamadaki renklerin karşılığı)
@@ -70,13 +71,6 @@ function formatDate(iso) {
     return new Date(iso).toLocaleString(getLocale());
 }
 
-function prettyBody(body) {
-    try {
-        return JSON.stringify(JSON.parse(body), null, 2);
-    } catch {
-        return body;
-    }
-}
 
 function profileText(testRun) {
     return testRun.loadProfile === "STEPPED"
@@ -408,7 +402,7 @@ function settingsBlock(testRun, summary) {
         { class: "keep" },
         h("div", { class: "sub-title" }, t("report.settings")),
         h("dl", { class: "kv" }, rows.map(([label, value]) => [h("dt", {}, label), h("dd", {}, value)])),
-        testRun.body ? [h("div", { class: "sub-title" }, t("form.body")), h("pre", { class: "body" }, prettyBody(testRun.body))] : null
+        testRun.body ? [h("div", { class: "sub-title" }, t("form.body")), h("pre", { class: "body" }, prettyJson(testRun.body))] : null
     );
 }
 

@@ -5,10 +5,10 @@
 import { prisma } from "../db/prisma.js";
 import { checkLocalUrl } from "../engine/security.js";
 import { apiError, type ApiError } from "../errors.js";
-import { MAX_URL_LENGTH } from "../config.js";
+import { MAX_URL_LENGTH, MAX_SEARCH_LENGTH } from "../config.js";
 
 const MAX_NAME_LENGTH = 40;
-const MAX_SEARCH_LENGTH = 200;
+
 
 // İsmin karşılaştırma için küçük harfli hali ("Test Sunucusu" → "test sunucusu")
 function nameKeyOf(name: string): string {

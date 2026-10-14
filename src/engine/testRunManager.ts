@@ -5,14 +5,11 @@ import { prisma } from "../db/prisma.js";
 import { targetRpsAt, type LoadProfile } from "./scheduler.js";
 import { computeTestSummary } from "./summary.js";
 import { summarizeWindow } from "./windowStats.js";
-import { DB_FLUSH_INTERVAL_MS, LIVE_WINDOW_MS, WORKER_LAG_WARNING_MS } from "../config.js";
+import { DB_FLUSH_INTERVAL_MS, LIVE_WINDOW_MS, LIVE_EMIT_DELAY_MS, WORKER_LAG_WARNING_MS } from "../config.js";
 import { apiError, errorBody, type ApiError } from "../errors.js";
 
 export type FinalStatus = "COMPLETED" | "STOPPED" | "FAILED";
 
-// Canlı dilim, süresi dolduktan bu kadar sonra gönderilir: worker sonuçları 100 ms'de bir topluyor,
-// o dilime ait geç gelen sonuçlar da yetişsin.
-const LIVE_EMIT_DELAY_MS = 150;
 // Zamanlayıcı bazen birkaç milisaniye erken çalışabilir; dilim sınırının hemen önüne düşmesin diye küçük pay
 const LIVE_TIMER_MARGIN_MS = 5;
 

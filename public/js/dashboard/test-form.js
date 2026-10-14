@@ -6,6 +6,7 @@ import { $ } from "../core/dom.js";
 import { t, formatNumber } from "../core/i18n.js";
 import { takeRerunSettings } from "../core/rerun.js";
 import { withDefaultScheme } from "../core/url.js";
+import { prettyJson } from "../core/json.js";
 
 // Dil değişince sayfa yenilenir: formdaki yazılmış ama başlatılmamış değerler bu anahtarla korunur
 const DRAFT_STORAGE_KEY = "volta-form-draft";
@@ -223,14 +224,8 @@ export function createTestForm() {
         methodSelect.value = config.method;
         rpsInput.value = config.targetRps;
         durationInput.value = config.durationSeconds;
-        // Gövde okunaklı olsun diye girintili (geçerli JSON değilse olduğu gibi)
-        let body = config.body ?? "";
-        try {
-            if (body) body = JSON.stringify(JSON.parse(body), null, 2);
-        } catch {
-            // olduğu gibi
-        }
-        bodyInput.value = body;
+        // Gövde okunaklı olsun diye girintili
+        bodyInput.value = prettyJson(config.body ?? "");
         if (type === "STEPPED") stepCountInput.value = config.profile.stepCount;
         setProfile(type);
     }
@@ -253,14 +248,7 @@ export function createTestForm() {
         if (!settings) return false;
 
         // Body okunaklı olsun diye girintili yazılır
-        let body = settings.body ?? "";
-        try {
-            if (body) body = JSON.stringify(JSON.parse(body), null, 2);
-        } catch {
-            // Geçerli JSON değilse olduğu gibi
-        }
-
-        fillForm({ ...settings, body });
+        fillForm({ ...settings, body: prettyJson(settings.body ?? "") });
         setStatus(t("state.rerunLoaded"));
         return true;
     }

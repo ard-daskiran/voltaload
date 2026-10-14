@@ -2,7 +2,8 @@
 // sağlıklı / sınırda / zorlandı / çöktü. Dört ölçünün en kötüsü belirler.
 
 import { THRESHOLDS as T } from "./thresholds.js";
-import { percentile, median, type SecondStats } from "./seconds.js";
+import { median, type SecondStats } from "./seconds.js";  
+import { percentileOf } from "../engine/windowStats.js";
 import type { Baseline } from "./baseline.js";
 
 export type HealthState = "HEALTHY" | "BORDERLINE" | "STRAINED" | "COLLAPSED";
@@ -84,8 +85,8 @@ export function aggregate(seconds: SecondStats[]): GroupStats {
     statusCounts,
     latencies,
     avg: latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : null,
-    p95: percentile(latencies, 0.95),
-    p99: percentile(latencies, 0.99),
+    p95: percentileOf(latencies, 0.95),
+    p99: percentileOf(latencies, 0.99),
     errorRate: total > 0 ? serverErrors / total : 0,
     connectionErrorRate: total > 0 ? connectionErrors / total : 0,
     throughputRatio: expected > 0 ? successInTarget / expected : 1,
@@ -107,7 +108,7 @@ export function latencyLimits(baseline: Baseline): { borderline: number; straine
 
 // Aynı yük altında gecikme sürekli artıyor mu? (ilk saniyelerin ve son saniyelerin p95 ortancası)
 function detectTrend(seconds: SecondStats[]): { from: number; to: number } | null {
-  const p95s = seconds.map((s) => percentile(s.latencies, 0.95)).filter((v): v is number => v !== null);
+  const p95s = seconds.map((s) => percentileOf(s.latencies, 0.95)).filter((v): v is number => v !== null);
   if (p95s.length < T.trend.minSeconds) return null;
 
   const k = Math.min(3, Math.floor(p95s.length / 2));

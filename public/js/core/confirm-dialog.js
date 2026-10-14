@@ -7,13 +7,7 @@
 // Dönüş: Promise<boolean>, onaylanıp işlem başarılıysa true
 
 import { t } from "./i18n.js";
-
-function el(tag, className = "", text) {
-    const node = document.createElement(tag);
-    node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
+import { el } from "./dom.js";
 
 // Türkçe İ / I farkı yüzünden "sil", "SİL" ve "SIL" aynı kabul edilsin
 function normalize(text) {

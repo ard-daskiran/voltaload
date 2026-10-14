@@ -4,13 +4,9 @@
 import { t } from "../core/i18n.js";
 import { rerunWith } from "../core/rerun.js";
 import { recommendationView, followUpText, TONE_COLORS } from "../analysis/analysis-text.js";
+import { el } from "../core/dom.js";
 
-function el(tag, className = "", text) {
-    const node = document.createElement(tag);
-    node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
+
 
 function recommendationCard(rec, testRun) {
     const view = recommendationView(rec);

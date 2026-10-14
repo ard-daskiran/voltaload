@@ -1,7 +1,7 @@
 // Canlı grafik: kurulum, dilim ekleme, saniye noktaları, kapanış.
 // Görsel sabitler, animasyon, eklentiler, bilgi kutusu ve açıklama satırı ayrı dosyalarda.
 
-import { t } from "../core/i18n.js";
+import { t, formatNumber } from "../core/i18n.js";
 import { statusCategory } from "../status/status-info.js";
 import { SERIES, CHART_COLORS, SECOND_DOT, Y_AXIS, MONO_FONT } from "./chart-theme.js";
 import { DEFAULT_WINDOW_SECONDS, roundTime, snapToWindow, isSecondMark, xKey, formatTimeTick } from "./chart-time.js";
@@ -9,7 +9,7 @@ import { createChartAnimator } from "./chart-animation.js";
 import { glowPlugin, crosshairPlugin, createRevealPlugin, avgFill } from "./chart-plugins.js";
 import { createChartTooltip } from "./chart-tooltip.js";
 import { bindLegend, updateLegendButtons } from "./chart-legend.js";
-import { formatNumber } from "../core/i18n.js";
+
 
 // --- Durum ---
 let liveChart = null;

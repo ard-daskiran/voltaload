@@ -6,7 +6,7 @@
 // (Grafik ise cevapları geldikleri ana göre gösterir: "şu anda sunucudan ne geliyor?")
 // Hiç sonucu olmayan saniyeler de listede yer alır (sunucu kilitlenmiş olabilir).
 
-import { isLatencySample, isServerError, isConnectionError, percentileOf } from "../engine/windowStats.js";
+import { isLatencySample, isServerError, isConnectionError } from "../engine/windowStats.js";
 import { requestsBetween, type LoadProfile } from "../engine/scheduler.js";
 
 // Gönderilme anı (cevabın geldiği an − cevap süresi) milisaniyeye yuvarlanmış değerlerden hesaplanır, ±1,5 ms
@@ -33,11 +33,6 @@ export interface SecondStats {
   timeouts: number;
   statusCounts: Record<string, number>;
   latencies: number[]; // Sıralı (bağlantı hataları hariç)
-}
-
-// Yüzdelik: özet ve canlı dilimlerle aynı hesap (windowStats.ts)
-export function percentile(sorted: number[], p: number): number | null {
-  return percentileOf(sorted, p);
 }
 
 // Ortanca: tek bir sıçrama ortalamayı bozar, ortancayı bozmaz

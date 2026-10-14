@@ -1,8 +1,12 @@
+// history-table.js
 // Geçmiş tablosunun satırları.
 
 import { t, formatNumber, formatMs, getLocale } from "../core/i18n.js";
 import { runStatusStyle, runStatusLabel } from "../status/run-status.js";
 import { latencyLevel } from "../core/latency.js";
+import { el } from "../core/dom.js";
+import { shortUrl } from "../core/url.js";
+
 
 const COLUMN_COUNT = 7;
 
@@ -14,12 +18,6 @@ const LATENCY_CLASSES = {
     critical: "text-signal-error",
 };
 
-function el(tag, className = "", text) {
-    const node = document.createElement(tag);
-    node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
 
 function td(className, ...children) {
     const cell = el("td", `py-3.5 px-4 ${className}`);
@@ -47,7 +45,7 @@ function urlCell(run) {
     if (run.targetName) {
         text.append(
             el("span", "truncate text-[13px] text-on-surface font-semibold", run.targetName),
-            el("span", "truncate text-[11px] text-on-surface-variant/60", run.url.replace(/^https?:\/\//, ""))
+            el("span", "truncate text-[11px] text-on-surface-variant/60", shortUrl(run.url))
         );
     } else {
         text.append(el("span", "truncate text-[13px] text-on-surface", run.url));

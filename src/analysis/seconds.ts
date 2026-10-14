@@ -9,10 +9,10 @@
 import { isLatencySample, isServerError, isConnectionError } from "../engine/windowStats.js";
 import { requestsBetween, type LoadProfile } from "../engine/scheduler.js";
 
-// Gönderilme anı (cevabın geldiği an − cevap süresi) milisaniyeye yuvarlanmış değerlerden hesaplanır, ±1,5 ms
-// şaşabilir. Zamanlayıcı tam saniye sınırında da istek gönderdiği için (ilk istek 0. anda, sonra eşit aralıklarla)
-// o istekler bir önceki saniyeye kaymasın diye küçük bir pay eklenir.
-const SEND_TIME_TOLERANCE_MS = 2;
+// Analiz edilen sürenin hemen sonrasında gönderilmiş görünen istekler (zamanlayıcının son anda yetiştirdikleri,
+// milisaniye yuvarlaması) son saniyeye yazılır. Daha sonrası analize girmez: durdurulan testte atılan kısa son
+// saniyenin istekleri bir önceki saniyeye karışmasın.
+const END_MARGIN_MS = 50;
 
 export interface ResultRow {
   timestamp: Date;
@@ -58,6 +58,7 @@ export function buildSeconds(rows: ResultRow[], options: BuildOptions): SecondSt
 
   // Analize giren son saniye
   const lastIndex = Math.max(0, Math.ceil(effectiveDuration) - 1);
+  const endMs = effectiveDuration * 1000;
 
   const createSecond = (index: number): SecondStats => {
     // Durdurulan testin son saniyesi kısmi olabilir: sadece durma anına kadar gönderilmesi gerekenler
@@ -80,11 +81,10 @@ export function buildSeconds(rows: ResultRow[], options: BuildOptions): SecondSt
   const byIndex = new Map<number, SecondStats>();
 
   for (const row of rows) {
-    // Gönderilme saniyesi. Analiz edilen sürenin dışında görünenler (zamanlayıcının son anda yetiştirdikleri,
-    // yuvarlama) en yakın uca yazılır.
-    const sentAt = row.timestamp.getTime() - row.responseTime;
-    const raw = Math.floor((sentAt - origin + SEND_TIME_TOLERANCE_MS) / 1000);
-    const index = Math.min(Math.max(0, raw), lastIndex);
+    // Gönderilme anı (testin başından, ms): cevabın geldiği an − cevap süresi
+    const sentOffset = row.timestamp.getTime() - row.responseTime - origin;
+    if (sentOffset > endMs + END_MARGIN_MS) continue;
+    const index = Math.min(Math.max(0, Math.floor(sentOffset / 1000)), lastIndex);
 
     let second = byIndex.get(index);
     if (!second) {

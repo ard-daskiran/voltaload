@@ -114,8 +114,8 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
     let maxLagMs = 0; // Test boyunca en yüksek gecikme (veritabanına yazılır)
     let finalized = false;
 
-    // Canlı dilimler: sonuçlar kendi zamanlarına göre testin başlangıcından itibaren 200 ms'lik dilimlere yerleşir
-    // (detay sayfası ve analizle aynı). Sıradaki gönderilecek dilim nextWindow.
+    // Canlı dilimler: sonuçlar cevabın GELDİĞİ ana göre testin başlangıcından itibaren dilimlere yerleşir
+    // (detay sayfasıyla aynı; analiz ise isteğin gönderildiği ana bakar). Sıradaki gönderilecek dilim nextWindow.
     const liveWindows = new Map<number, ResultItem[]>();
     let nextWindow = 0;
 

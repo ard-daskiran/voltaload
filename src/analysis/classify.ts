@@ -49,8 +49,8 @@ export function aggregate(seconds: SecondStats[]): GroupStats {
   const statusCounts: Record<string, number> = {};
   const latencies: number[] = [];
   let expected = 0, total = 0, success = 0, serverErrors = 0, connectionErrors = 0, timeouts = 0;
-  // Sadece hedefin olduğu saniyelerdeki başarılılar. Test bittikten sonra gelen geç cevaplar
-  // (önceki saniyelerde gönderilip kuyrukta beklemiş) gerçekleşen RPS'i şişirmesin.
+  // Sadece hedefin olduğu saniyelerdeki başarılılar (sonuçlar gönderildikleri saniyeye yazıldığı için
+  // hedefsiz saniye oluşmuyor; bu bir güvence).
   let successInTarget = 0;
 
   for (const s of seconds) {

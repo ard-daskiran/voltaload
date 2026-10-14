@@ -31,8 +31,8 @@ import { apiError, errorBody } from "./errors.js";
 //           sadece Volta'nın kendi sayfası kabul edilir. Origin yoksa (curl gibi tarayıcı dışı araçlar) izin verilir.
 //   Çerçeve: Volta başka bir sitenin içinde (iframe) açılamaz (görünmez çerçeveyle tıklatma saldırısı).
 
-// Port 80'de tarayıcı Host'a portu yazmaz, o yüzden portsuz hali de kabul edilir (adlar zaten sadece bu bilgisayarın)
-const allowedHosts = new Set(ALLOWED_HOSTNAMES.flatMap((name) => [`${name}:${VOLTA_PORT}`, name]));
+// Tarayıcı Host'a portu her zaman yazar (port 80 ayarlarda yasak)
+const allowedHosts = new Set(ALLOWED_HOSTNAMES.map((name) => `${name}:${VOLTA_PORT}`));
 const allowedOrigins = new Set(ALLOWED_HOSTNAMES.map((name) => `http://${name}:${VOLTA_PORT}`));
 
 function isAllowedHost(host: string | undefined): boolean {

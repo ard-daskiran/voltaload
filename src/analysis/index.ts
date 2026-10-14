@@ -38,6 +38,13 @@ function findOutage(seconds: SecondStats[], events: AnalysisEvent[], baseline: B
   return { second: lost.second, rps: Math.round(Math.max(...before.map((s) => s.targetRps))) };
 }
 
+// İlk gönderilen isteğin anı (başlangıç kaydı olmayan eski testler için)
+function firstSentAt(rows: ResultRow[]): number {
+  let first = Infinity;
+  for (const row of rows) first = Math.min(first, row.timestamp.getTime() - row.responseTime);
+  return first;
+}
+
 // En son gönderilen isteğin anı (yarıda kalan testte kesin durma anı kayıtlı değil)
 function lastSentAt(rows: ResultRow[]): number {
   let last = 0;
@@ -62,8 +69,9 @@ export async function analyzeTestRun(id: string) {
   const profile = profileOf(testRun);
   const stopped = testRun.status !== "COMPLETED";
 
-  // Saniyeler testin başlangıcından sayılır. Eski testlerde başlangıç kaydı yok, ilk cevaptan sayılır.
-  const origin = testRun.startedAt?.getTime() ?? rows[0].timestamp.getTime();
+  // Saniyeler testin başlangıcından sayılır. Eski testlerde başlangıç kaydı yok: ilk isteğin gönderildiği an
+  // (sonuçlar gönderildikleri saniyeye yazıldığı için başlangıç da gönderme anı olmalı, ilk cevabın geldiği an değil).
+  const origin = testRun.startedAt?.getTime() ?? firstSentAt(rows);
 
   // Analiz edilen süre (sn). Tamamlanan testte ayarlanan süre. Durdurulan, yarıda kalan ya da hatayla biten testte
   // cevabı kaydedilmiş en son isteğin GÖNDERİLDİĞİ an. Durdurma anı değil: durdurunca yoldaki isteklerin cevapları

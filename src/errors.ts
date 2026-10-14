@@ -40,7 +40,10 @@ export type ErrorCode =
   | "BODY_TOO_LARGE"
   | "INVALID_JSON"
   | "API_NOT_FOUND"
-  | "INTERNAL_ERROR";
+  | "INTERNAL_ERROR"
+  // Güvenlik (istek Volta'nın kendi adresinden gelmiyor)
+  | "FORBIDDEN_HOST"
+  | "FORBIDDEN_ORIGIN";
 
 type Params = Record<string, string | number>;
 
@@ -48,8 +51,8 @@ type Params = Record<string, string | number>;
 const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   INVALID_URL: () => "A valid URL is required.",
   INVALID_METHOD: () => "Method must be GET or POST.",
-  INVALID_RPS: (p) => `Requests per second must be a whole number between 1 and ${p.max}.`,
-  INVALID_DURATION: (p) => `Duration must be a whole number between 1 and ${p.max} seconds.`,
+  INVALID_RPS: (p) => `Requests per second must be a whole number between ${p.min} and ${p.max}.`,
+  INVALID_DURATION: (p) => `Duration must be a whole number between ${p.min} and ${p.max} seconds.`,
   INVALID_PROFILE: () => "Test type must be CONSTANT or STEPPED.",
   INVALID_STEP_COUNT: (p) => `Steps must be between ${p.min} and ${p.max}.`,
   STEP_TOO_SHORT: (p) => `Each step must last at least ${p.min}s. Increase the duration or reduce the steps.`,
@@ -83,6 +86,9 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   INVALID_JSON: () => "The request body is not valid JSON.",
   API_NOT_FOUND: () => "No such API endpoint.",
   INTERNAL_ERROR: () => "An unexpected server error occurred.",
+
+  FORBIDDEN_HOST: (p) => `Volta can only be opened at http://localhost:${p.port} or http://127.0.0.1:${p.port}.`,
+  FORBIDDEN_ORIGIN: () => "Requests from other websites are not allowed.",
 };
 
 export interface ApiError {

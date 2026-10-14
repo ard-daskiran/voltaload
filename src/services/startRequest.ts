@@ -3,7 +3,9 @@
 import type { LoadProfile } from "../engine/scheduler.js";
 import { apiError, type ApiError } from "../errors.js";
 import {
+  MIN_TARGET_RPS,
   MAX_TARGET_RPS,
+  MIN_DURATION_SECONDS,
   MAX_DURATION_SECONDS,
   MIN_STEP_COUNT,
   MAX_STEP_COUNT,
@@ -35,12 +37,12 @@ export function validateStartRequest(input: any): { ok: true; value: StartReques
     return { ok: false, error: apiError("INVALID_METHOD") };
   }
 
-  if (typeof targetRps !== "number" || !Number.isInteger(targetRps) || targetRps < 1 || targetRps > MAX_TARGET_RPS) {
-    return { ok: false, error: apiError("INVALID_RPS", { max: MAX_TARGET_RPS }) };
+  if (typeof targetRps !== "number" || !Number.isInteger(targetRps) || targetRps < MIN_TARGET_RPS || targetRps > MAX_TARGET_RPS) {
+    return { ok: false, error: apiError("INVALID_RPS", { min: MIN_TARGET_RPS, max: MAX_TARGET_RPS }) };
   }
 
-  if (typeof duration !== "number" || !Number.isInteger(duration) || duration < 1 || duration > MAX_DURATION_SECONDS) {
-    return { ok: false, error: apiError("INVALID_DURATION", { max: MAX_DURATION_SECONDS }) };
+  if (typeof duration !== "number" || !Number.isInteger(duration) || duration < MIN_DURATION_SECONDS || duration > MAX_DURATION_SECONDS) {
+    return { ok: false, error: apiError("INVALID_DURATION", { min: MIN_DURATION_SECONDS, max: MAX_DURATION_SECONDS }) };
   }
 
   if (loadProfile !== "CONSTANT" && loadProfile !== "STEPPED") {

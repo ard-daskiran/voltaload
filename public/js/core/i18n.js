@@ -28,8 +28,9 @@ const MESSAGES = {
         "form.stepTooShort": "Her kademe en az {min} sn sürmeli. Süreyi artır ya da kademe sayısını azalt.",
         "form.stepCountRange": "Kademe sayısı {min} ile {max} arasında olmalı.",
         "form.stepRpsTooLow": "Maks. RPS, kademe sayısından ({min}) az olamaz. Her kademe saniyede en az 1 istek göndermeli.",
-        "form.rpsRange": "Saniyede istek 1 ile {max} arasında bir tam sayı olmalı.",
-        "form.durationRange": "Süre 1 ile {max} saniye arasında bir tam sayı olmalı.",
+        "form.rpsRange": "Saniyede istek {min} ile {max} arasında bir tam sayı olmalı.",
+        "form.minPlaceholder": "min {min}",
+        "form.durationRange": "Süre {min} ile {max} saniye arasında bir tam sayı olmalı.",
         "form.body": "JSON Body",
         "form.optional": "Opsiyonel",
         "form.start": "TESTİ BAŞLAT",
@@ -423,8 +424,8 @@ const MESSAGES = {
         // --- Sunucu hataları (kodlar: src/errors.ts) ---
         "error.INVALID_URL": "Geçerli bir URL girilmeli.",
         "error.INVALID_METHOD": "Yöntem GET ya da POST olmalı.",
-        "error.INVALID_RPS": "Saniyede istek 1 ile {max} arasında bir tam sayı olmalı.",
-        "error.INVALID_DURATION": "Süre 1 ile {max} saniye arasında bir tam sayı olmalı.",
+        "error.INVALID_RPS": "Saniyede istek {min} ile {max} arasında bir tam sayı olmalı.",
+        "error.INVALID_DURATION": "Süre {min} ile {max} saniye arasında bir tam sayı olmalı.",
         "error.INVALID_PROFILE": "Test türü sabit ya da kademeli olmalı.",
         "error.INVALID_STEP_COUNT": "Kademe sayısı {min} ile {max} arasında olmalı.",
         "error.STEP_TOO_SHORT": "Her kademe en az {min} sn sürmeli. Süreyi artır ya da kademe sayısını azalt.",
@@ -455,6 +456,9 @@ const MESSAGES = {
         "error.API_NOT_FOUND": "Böyle bir API adresi yok.",
         "error.INTERNAL_ERROR": "Volta'da beklenmeyen bir hata oluştu. Ayrıntılar Volta'nın terminalinde.",
 
+        "error.FORBIDDEN_HOST": "Volta sadece http://localhost:{port} ya da http://127.0.0.1:{port} adresinden açılabilir.",
+        "error.FORBIDDEN_ORIGIN": "Başka sitelerden gelen isteklere izin verilmiyor.",
+
     },
 
     en: {
@@ -477,8 +481,9 @@ const MESSAGES = {
         "form.stepTooShort": "Each step must last at least {min}s. Increase the duration or reduce the steps.",
         "form.stepCountRange": "Steps must be between {min} and {max}.",
         "form.stepRpsTooLow": "Max RPS cannot be lower than the number of steps ({min}). Each step must send at least 1 request per second.",
-        "form.rpsRange": "Requests per second must be a whole number between 1 and {max}.",
-        "form.durationRange": "Duration must be a whole number between 1 and {max} seconds.",
+        "form.rpsRange": "Requests per second must be a whole number between {min} and {max}.",
+        "form.minPlaceholder": "min {min}",
+        "form.durationRange": "Duration must be a whole number between {min} and {max} seconds.",
         "form.body": "JSON Body",
         "form.optional": "Optional",
         "form.start": "START TEST",
@@ -855,8 +860,8 @@ const MESSAGES = {
 
         "error.INVALID_URL": "A valid URL is required.",
         "error.INVALID_METHOD": "Method must be GET or POST.",
-        "error.INVALID_RPS": "Requests per second must be a whole number between 1 and {max}.",
-        "error.INVALID_DURATION": "Duration must be a whole number between 1 and {max} seconds.",
+        "error.INVALID_RPS": "Requests per second must be a whole number between {min} and {max}.",
+        "error.INVALID_DURATION": "Duration must be a whole number between {min} and {max} seconds.",
         "error.INVALID_PROFILE": "Test type must be constant or stepped.",
         "error.INVALID_STEP_COUNT": "Steps must be between {min} and {max}.",
         "error.STEP_TOO_SHORT": "Each step must last at least {min}s. Increase the duration or reduce the steps.",
@@ -887,6 +892,8 @@ const MESSAGES = {
         "error.INVALID_JSON": "The body is not valid JSON.",
         "error.API_NOT_FOUND": "No such API endpoint.",
         "error.INTERNAL_ERROR": "An unexpected error occurred in Volta. Details are in Volta's terminal.",
+        "error.FORBIDDEN_HOST": "Volta can only be opened at http://localhost:{port} or http://127.0.0.1:{port}.",
+        "error.FORBIDDEN_ORIGIN": "Requests from other websites are not allowed.",
     },
 };
 

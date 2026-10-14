@@ -1,5 +1,6 @@
 // Test formu: alanlar, test türü, kademe önizlemesi, kilitleme, durum yazısı,
 // "Yeniden Çalıştır" ayarları ve dil değişiminde korunan taslak.
+// Sınırlar (RPS, süre, kademe) sunucudan gelir (/api/limits): tek kaynak config.ts.
 
 import { $ } from "../core/dom.js";
 import { t, formatNumber } from "../core/i18n.js";
@@ -9,12 +10,9 @@ import { withDefaultScheme } from "../core/url.js";
 // Dil değişince sayfa yenilenir: formdaki yazılmış ama başlatılmamış değerler bu anahtarla korunur
 const DRAFT_STORAGE_KEY = "volta-form-draft";
 
-// Sunucudaki sınırların aynısı (kullanıcıyı test başlatmadan uyarmak için)
-const MAX_TARGET_RPS = 1000;
-const MAX_DURATION_SECONDS = 60;
-const MIN_STEP_COUNT = 2;
-const MAX_STEP_COUNT = 10;
-const MIN_STEP_DURATION_SECONDS = 2;
+// Sunucudan gelen sınırlar. Gelene kadar (ya da gelemezse) form kendi kontrolünü yapmaz:
+// sunucu her isteği zaten kontrol ediyor, hata mesajı oradan gelir.
+let limits = null;
 
 // Kademelerin RPS'i: sunucudaki zamanlayıcıyla aynı yuvarlama
 function stepTargets(rps, steps) {
@@ -23,26 +21,28 @@ function stepTargets(rps, steps) {
 
 // Kademeli test ayarları geçerli mi? Geçersizse hata mesajı döner.
 function checkStepped(rps, duration, steps) {
-    if (!Number.isInteger(steps) || steps < MIN_STEP_COUNT || steps > MAX_STEP_COUNT) {
-        return t("form.stepCountRange", { min: MIN_STEP_COUNT, max: MAX_STEP_COUNT });
+    if (!limits) return null;
+    if (!Number.isInteger(steps) || steps < limits.minStepCount || steps > limits.maxStepCount) {
+        return t("form.stepCountRange", { min: limits.minStepCount, max: limits.maxStepCount });
     }
     // Her kademe saniyede en az 1 istek göndermeli
     if (rps < steps) {
         return t("form.stepRpsTooLow", { min: steps });
     }
-    if (!(duration > 0) || duration / steps < MIN_STEP_DURATION_SECONDS) {
-        return t("form.stepTooShort", { min: MIN_STEP_DURATION_SECONDS });
+    if (!(duration > 0) || duration / steps < limits.minStepDurationSeconds) {
+        return t("form.stepTooShort", { min: limits.minStepDurationSeconds });
     }
     return null;
 }
 
 // RPS ve süre geçerli mi? Her iki test türü için de geçerli. Geçersizse hata mesajı döner.
 function checkBasics(rps, duration) {
-    if (!Number.isInteger(rps) || rps < 1 || rps > MAX_TARGET_RPS) {
-        return t("form.rpsRange", { max: MAX_TARGET_RPS });
+    if (!limits) return null;
+    if (!Number.isInteger(rps) || rps < limits.minTargetRps || rps > limits.maxTargetRps) {
+        return t("form.rpsRange", { min: limits.minTargetRps, max: limits.maxTargetRps });
     }
-    if (!Number.isInteger(duration) || duration < 1 || duration > MAX_DURATION_SECONDS) {
-        return t("form.durationRange", { max: MAX_DURATION_SECONDS });
+    if (!Number.isInteger(duration) || duration < limits.minDurationSeconds || duration > limits.maxDurationSeconds) {
+        return t("form.durationRange", { min: limits.minDurationSeconds, max: limits.maxDurationSeconds });
     }
     return null;
 }
@@ -70,6 +70,12 @@ export function createTestForm() {
     function updatePreview() {
         if (profile !== "STEPPED") return;
 
+        // Kullanıcı daha bir şey yazmadıysa hata gösterme (başlatırken yine kontrol edilir)
+        if (rpsInput.value === "" || durationInput.value === "") {
+            stepPreview.textContent = "";
+            return;
+        }
+
         const rps = Number(rpsInput.value);
         const duration = Number(durationInput.value);
         const steps = Number(stepCountInput.value);
@@ -90,6 +96,35 @@ export function createTestForm() {
             steps: stepTargets(rps, steps).join(" → "),
             seconds: formatNumber(seconds, Number.isInteger(seconds) ? 0 : 1),
         });
+    }
+
+    // Sunucudan gelen sınırları kutulara uygula: min/max (klavye okları için) ve ipucu ("min 10")
+    function applyLimits(newLimits) {
+        limits = newLimits;
+
+        rpsInput.min = limits.minTargetRps;
+        rpsInput.max = limits.maxTargetRps;
+        rpsInput.placeholder = t("form.minPlaceholder", { min: limits.minTargetRps });
+
+        durationInput.min = limits.minDurationSeconds;
+        durationInput.max = limits.maxDurationSeconds;
+        durationInput.placeholder = t("form.minPlaceholder", { min: limits.minDurationSeconds });
+
+        stepCountInput.min = limits.minStepCount;
+        stepCountInput.max = limits.maxStepCount;
+
+        updatePreview();
+    }
+
+    async function loadLimits() {
+        try {
+            const response = await fetch("/api/limits");
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            applyLimits(await response.json());
+        } catch (err) {
+            // Sınırlar gelmezse form kontrol yapmaz, sunucunun hata mesajı gösterilir
+            console.error("Test sınırları alınamadı:", err);
+        }
     }
 
     function setProfile(newProfile) {
@@ -187,12 +222,12 @@ export function createTestForm() {
     }
 
     // Formu verilen ayarlarla doldur (yeniden çalıştırma ve taslak ortak kullanır)
-    // (formun kendi biçimi: duration, loadProfile, stepCount)
+    // (formun kendi biçimi: duration, loadProfile, stepCount). Verilmeyen RPS ve süre boş kalır.
     function fillForm(settings) {
         urlInput.value = settings.url ?? "";
         methodSelect.value = settings.method ?? "GET";
-        rpsInput.value = settings.targetRps ?? 50;
-        durationInput.value = settings.duration ?? 10;
+        rpsInput.value = settings.targetRps ?? "";
+        durationInput.value = settings.duration ?? "";
         if (settings.stepCount) stepCountInput.value = settings.stepCount;
         bodyInput.value = settings.body ?? "";
         setProfile(settings.loadProfile === "STEPPED" ? "STEPPED" : "CONSTANT");
@@ -268,6 +303,7 @@ export function createTestForm() {
     }
 
     setProfile("CONSTANT");
+    loadLimits();
 
     // Rehber için: formdaki URL'yi oku / yaz
     function getUrl() {

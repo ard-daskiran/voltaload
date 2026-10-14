@@ -114,7 +114,7 @@ function detectTrend(seconds: SecondStats[]): { from: number; to: number } | nul
   const from = median(p95s.slice(0, k))!;
   const to = median(p95s.slice(-k))!;
 
-  if (to > from * T.trend.ratio && to - from >= T.trend.minExtraMs) {
+  if (to >= from * T.trend.ratio && to - from >= T.trend.minExtraMs) {
     return { from: Math.round(from), to: Math.round(to) };
   }
   return null;

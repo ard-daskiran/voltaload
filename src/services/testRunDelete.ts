@@ -1,5 +1,5 @@
 // Test silme ve veritabanı temizleme. Çalışan bir teste dokunulmaz.
-// Sadece TestRun ve TestResult tabloları etkilenir (ileride eklenecek kayıtlı URL'ler ayrı tabloda kalır).
+// Sadece TestRun ve TestResult tabloları etkilenir (URL rehberi ayrı tabloda, ona dokunulmaz).
 
 import { prisma } from "../db/prisma.js";
 import { getActiveTestRun } from "../engine/testRunManager.js";
@@ -37,8 +37,11 @@ export async function clearAllTestRuns(): Promise<
   // Başarısız olursa veriler yine de silinmiştir, sadece dosya küçülmemiştir.
   try {
     await prisma.$executeRawUnsafe("VACUUM");
+    // WAL modunda değişiklikler önce dev.db-wal'a yazılır ve o dosya kendiliğinden küçülmez:
+    // ana dosyaya aktarıp sıfırla, yoksa temizlemeden sonra klasörde yine onlarca MB'lık bir dosya kalır
+    await prisma.$queryRawUnsafe("PRAGMA wal_checkpoint(TRUNCATE);");
   } catch (err) {
-    console.error("VACUUM çalıştırılamadı:", err);
+    console.error("Veritabanı dosyası küçültülemedi:", err);
   }
 
   return { ok: true, deletedRuns: runs.count, deletedResults: results.count };

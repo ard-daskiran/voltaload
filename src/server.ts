@@ -1,5 +1,5 @@
 // .env her şeyden önce yüklenmeli: config.ts (VOLTA_PORT) ve db/prisma.ts (DATABASE_URL) onu okuyor
-import "dotenv/config";
+import "./env.js";
 import express, { type Request, type Response, type NextFunction } from "express";
 import path from "node:path";
 import { createServer } from "node:http";

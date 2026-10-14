@@ -41,6 +41,7 @@ export const WORKER_LAG_WARNING_MS = 50;
 
 // Hedef URL'nin en fazla uzunluğu (test başlatma ve URL rehberi)
 export const MAX_URL_LENGTH = 2000;
+
 // --- Ayarların kontrolü ---
 // Volta açılırken çalışır (server.ts). Buradaki kurallar kodun doğru çalışması için şart:
 // ayarlar değiştirilebilir, kurallar değiştirilemez. Bütün sorunlar tek seferde listelenir.
@@ -77,6 +78,11 @@ export function validateConfig(): string[] {
   // Port: ortam değişkeninden geliyor, "abc" ya da boş olabilir
   if (!Number.isInteger(VOLTA_PORT) || VOLTA_PORT < 1 || VOLTA_PORT > 65535) {
     problems.push(`VOLTA_PORT must be a whole number between 1 and 65535 (current: "${process.env.VOLTA_PORT}")`);
+  }
+
+  // Tarayıcı varsayılan portu (80) adrese yazmaz; Volta'nın güvenlik kontrolleri portu adreste bekliyor
+  if (VOLTA_PORT === 80) {
+    problems.push("VOLTA_PORT cannot be 80 (browsers leave the default port out of the address). Use another port, e.g. 4400");
   }
 
   // Test sınırları: 0 saniyelik ya da saniyede 0 istek gönderen test anlamsız

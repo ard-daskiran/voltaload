@@ -43,6 +43,7 @@ interface ActiveRun {
   config: {
     url: string;
     method: string;
+    body?: string; // Sayfa yeniden bağlanınca form gövdeyle de dolsun
     targetRps: number;
     durationSeconds: number;
     profile?: LoadProfile;
@@ -272,6 +273,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       config: {
         url: params.url,
         method: params.method,
+        body: params.body,
         targetRps: params.targetRps,
         durationSeconds: params.durationSeconds,
         profile: params.profile,

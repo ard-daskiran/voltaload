@@ -223,6 +223,14 @@ export function createTestForm() {
         methodSelect.value = config.method;
         rpsInput.value = config.targetRps;
         durationInput.value = config.durationSeconds;
+        // Gövde okunaklı olsun diye girintili (geçerli JSON değilse olduğu gibi)
+        let body = config.body ?? "";
+        try {
+            if (body) body = JSON.stringify(JSON.parse(body), null, 2);
+        } catch {
+            // olduğu gibi
+        }
+        bodyInput.value = body;
         if (type === "STEPPED") stepCountInput.value = config.profile.stepCount;
         setProfile(type);
     }

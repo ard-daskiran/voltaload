@@ -1,15 +1,15 @@
 // connection-overlay.js
-// "Volta'yla bağlantı koptu" kutusu (anasayfa). Sayfa tarayıcıda çalışmaya devam ettiği için
-// Volta kapalıyken de gösterilebilir; metinler sözlükte, zaten yüklü.
-//   - Bağlantı kopunca biraz bekler, hâlâ kopuksa açılır (kısa kopmalarda ekran yanıp sönmesin)
-//   - Volta geri gelince: test çalışmıyorsa kendiliğinden kapanır, çalışıyorduysa yenilemeyi ister
-//   - "Sayfayı yenile" butonu Volta geri gelene kadar pasif (kapalıyken yenilemek "siteye ulaşılamıyor" gösterir)
+// "Lost connection to Volta" box (home page). Since the page keeps running in the browser,
+// it can be shown even while Volta is down; the texts are in the dictionary, already loaded.
+//   - When the connection drops it waits a bit and opens if still disconnected (so short drops don't make the screen flicker)
+//   - When Volta comes back: closes by itself if no test was running, asks for a reload if one was
+//   - The "Reload page" button stays disabled until Volta is back (reloading while it's down shows "site can't be reached")
 
 import { t } from "./i18n.js";
 import { el } from "./dom.js";
 
 const SHOW_DELAY_MS = 1500;
-const DOTS_INTERVAL_MS = 400; // "..." animasyonunun hızı
+const DOTS_INTERVAL_MS = 400; // Speed of the "..." animation
 const DOT_FRAMES = [".", "..", "..."];
 
 
@@ -18,11 +18,11 @@ export function createConnectionOverlay() {
     let refs = null;
     let timer = null;
     let dotsTimer = null;
-    let needsReload = false; // Koptuğunda test çalışıyordu: ekrandaki bilgiler artık güvenilir değil
+    let needsReload = false; // A test was running when it disconnected: the data on screen is no longer reliable
     let previousOverflow = "";
 
     function build() {
-        // Arka plan karartılmaz, bulanıklaştırılır
+        // The background isn't darkened, it's blurred
         const root = el("div", "fixed inset-0 z-[70] flex items-center justify-center p-4 bg-background/20 backdrop-blur-md");
 
         const box = el("div", "relative w-full max-w-md bg-surface-container-lowest border border-border-subtle rounded-lg shadow-2xl flex flex-col overflow-hidden");
@@ -42,7 +42,7 @@ export function createConnectionOverlay() {
         const statusRow = el("div", "flex items-center gap-2 font-data-md text-[13px] text-on-surface-variant");
         const dot = el("span", "w-2 h-2 rounded-full bg-primary-container animate-pulse");
         const statusText = el("span", "", t("connection.reconnecting"));
-        // Sabit genişlik: nokta sayısı değişince satır kaymasın
+        // Fixed width: so the line doesn't shift when the number of dots changes
         const dots = el("span", "inline-block w-[3ch] text-left", DOT_FRAMES[0]);
         const textWrap = el("span", "");
         textWrap.append(statusText, dots);
@@ -68,7 +68,7 @@ export function createConnectionOverlay() {
         return root;
     }
 
-    // "." → ".." → "..." → "." (yeniden bağlanma denenirken)
+    // "." → ".." → "..." → "." (while trying to reconnect)
     function startDots() {
         let frame = 0;
         dotsTimer = setInterval(() => {
@@ -101,14 +101,14 @@ export function createConnectionOverlay() {
         document.body.style.overflow = previousOverflow;
     }
 
-    // Bağlantı koptu. testRunning: o sırada izlenen bir test var mıydı
+    // Connection lost. testRunning: whether a test was being watched at the time
     function lost(testRunning) {
         if (testRunning) needsReload = true;
         if (overlay || timer) return;
         timer = setTimeout(show, SHOW_DELAY_MS);
     }
 
-    // Bağlantı (yeniden) kuruldu. Sayfa açılırken de bir kez çağrılır, o zaman bir şey yapmaz.
+    // Connection (re)established. Also called once when the page opens; does nothing then.
     function restored() {
         clearTimeout(timer);
         timer = null;
@@ -119,7 +119,7 @@ export function createConnectionOverlay() {
             return;
         }
 
-        // Test çalışıyordu: kutu kalır, noktalar durur, yenileme açılır
+        // A test was running: the box stays, the dots stop, reload is enabled
         stopDots();
         refs.message.textContent = t("connection.restoredText");
         refs.statusText.textContent = t("connection.reconnected");

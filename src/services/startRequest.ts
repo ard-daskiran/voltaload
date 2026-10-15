@@ -1,4 +1,4 @@
-// Test başlatma isteğinin doğrulanması: URL, yöntem, RPS, süre ve kademe kuralları.
+// Validation of the test start request: URL, method, RPS, duration and step rules.
 
 import type { LoadProfile } from "../engine/scheduler.js";
 import { apiError, type ApiError } from "../errors.js";
@@ -27,7 +27,7 @@ export interface StartRequest {
 export function validateStartRequest(input: any): { ok: true; value: StartRequest } | { ok: false; error: ApiError } {
   const { url: rawUrl, method = "GET", body, targetRps, duration, loadProfile = "CONSTANT", stepCount } = input ?? {};
 
-  // Baştaki ve sondaki boşluklar silinir (yoksa rehberdeki ismiyle eşleşmez). Rehberle aynı uzunluk sınırı.
+  // Leading and trailing whitespace is removed (otherwise it won't match its name in the target book). Same length limit as the target book.
   const url = typeof rawUrl === "string" ? rawUrl.trim() : "";
   if (url.length === 0 || url.length > MAX_URL_LENGTH) {
     return { ok: false, error: apiError("INVALID_URL") };
@@ -53,7 +53,7 @@ export function validateStartRequest(input: any): { ok: true; value: StartReques
     if (typeof stepCount !== "number" || !Number.isInteger(stepCount) || stepCount < MIN_STEP_COUNT || stepCount > MAX_STEP_COUNT) {
       return { ok: false, error: apiError("INVALID_STEP_COUNT", { min: MIN_STEP_COUNT, max: MAX_STEP_COUNT }) };
     }
-    // Her kademe saniyede en az 1 istek göndermeli (yuvarlanınca 0 RPS'lik kademe olmasın)
+    // Each step must send at least 1 request per second (so rounding never gives a 0 RPS step)
     if (targetRps < stepCount) {
       return { ok: false, error: apiError("STEP_RPS_TOO_LOW", { min: stepCount }) };
     }
@@ -67,7 +67,7 @@ export function validateStartRequest(input: any): { ok: true; value: StartReques
     value: {
       url,
       method,
-      // GET testinde gövde gönderilmez, kaydedilmesin de (detay sayfası onu "JSON Body" diye göstermesin)
+      // A GET test sends no body, so don't save one either (so the detail page doesn't show it as "JSON Body")
       body: method === "GET" ? undefined : body,
       targetRps,
       duration,

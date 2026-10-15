@@ -1,4 +1,4 @@
-// Detay sayfasının sol sütunu: testin ayarları (salt okunur) ve "Yeniden Çalıştır".
+// The detail page's left column: the test's settings (read-only) and "Run again".
 
 import { $ } from "../core/dom.js";
 import { t, formatNumber, getLocale } from "../core/i18n.js";
@@ -26,7 +26,7 @@ export function createTestSettings() {
         current = testRun;
         const stepped = testRun.loadProfile === "STEPPED";
 
-        // Rehberde kayıtlıysa isim üstte, URL altında küçük ve soluk
+        // If saved in the target book, the name on top and the URL below, small and faded
         const name = testRun.targetName;
         $("d-target-name").hidden = !name;
         $("d-target-name").textContent = name ?? "";
@@ -39,7 +39,7 @@ export function createTestSettings() {
             ? `${t("form.profile.stepped")} · ${t("detail.steps", { count: testRun.stepCount })}`
             : t("form.profile.constant");
 
-        // Kademeli testte hedef, son kademenin RPS'i
+        // In a stepped test the target is the last step's RPS
         $("d-target-rps-label").textContent = t(stepped ? "form.rpsStepped" : "detail.targetRps");
         $("d-target-rps").textContent = formatNumber(testRun.targetRps);
         $("d-duration").textContent = t("detail.seconds", { value: testRun.duration });
@@ -51,7 +51,7 @@ export function createTestSettings() {
         if (hasBody) $("d-body").textContent = prettyJson(testRun.body);
     }
 
-    // Ayarları anasayfaya bırak ve oraya git (form bu ayarlarla dolar)
+    // Leave the settings for the home page and go there (the form fills with these settings)
     function rerun() {
         if (!current) return;
 

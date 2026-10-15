@@ -5,7 +5,7 @@ import { runScheduledLoop, type LoadProfile } from "./scheduler.js";
 import { WORKER_BATCH_INTERVAL_MS } from "../config.js";
 
 if (!parentPort) {
-  throw new Error("Bu dosya sadece bir worker thread içinde çalıştırılmalı.");
+  throw new Error("This file must only be run inside a worker thread.");
 }
 
 const port = parentPort;
@@ -27,11 +27,11 @@ interface StartMessage {
 }
 
 interface RequestResult {
-  statusCode: number; // Cevap gelmediyse 0
+  statusCode: number; // 0 if no response arrived
   errorType: ErrorType | null;
   responseTime: number; // ms
-  responseSize: number; // byte (ağdan inen, sıkıştırılmış)
-  timestamp: number; // cevabın tamamlandığı an (ms)
+  responseSize: number; // bytes (downloaded over the network, compressed)
+  timestamp: number; // when the response completed (ms)
 }
 
 function classifyError(err: any): ErrorType {
@@ -57,15 +57,15 @@ async function makeRequest(
       method: method as any,
       body: sendsBody ? body : undefined,
       headers: {
-        // Tarayıcı gibi sıkıştırılmış cevap iste. undici cevabı açmaz.
+        // Ask for a compressed response like a browser does. undici doesn't decompress it.
         "accept-encoding": "gzip, deflate, br",
         ...(sendsBody ? { "content-type": "application/json" } : {}),
       },
       signal,
     });
 
-    // İçeriğin tamamını oku ama saklama: sadece boyutunu say.
-    // Böylece süre gerçekçi ölçülür ve bağlantı tekrar kullanılabilir.
+    // Read the whole body but don't keep it: only count its size.
+    // This way the time is measured realistically and the connection can be reused.
     let size = 0;
     for await (const chunk of response.body) {
       size += chunk.length;
@@ -79,7 +79,7 @@ async function makeRequest(
       timestamp: Date.now(),
     };
   } catch (err) {
-    // Hata türünü hata nesnesinin adından değil, kendi zamanlayıcımızdan anla
+    // Determine the error type from our own timer, not from the error object's name
     if (signal.aborted) {
       return {
         statusCode: 0,
@@ -112,13 +112,13 @@ port.on("message", async (message: StartMessage) => {
     profile,
   } = message;
 
-  // DNS pinning: her bağlantı, ana thread'in onayladığı adrese gider.
-  // Node adres sorgusunu iki biçimde yapabilir (tek adres ya da liste), ikisine de cevap veriyoruz.
+  // DNS pinning: every connection goes to the address approved by the main thread.
+  // Node can do the address lookup in two forms (single address or list); we answer both.
   const agent = new Agent({
     connect: {
-      // Sertifika doğrulaması kapalı: yerel HTTPS sunucuları neredeyse hep kendinden imzalı sertifika kullanır
-      // (mkcert, Vite --https gibi), doğrulama açıkken bütün istekler "ağ hatası" olur. Hedefler zaten sadece
-      // yerel adresler (security.ts); curl -k ve Postman'in "SSL doğrulama" ayarı da aynısını yapar.
+      // Certificate verification is off: local HTTPS servers almost always use self-signed certificates
+      // (like mkcert, Vite --https); with verification on, every request would be a "network error". Targets are
+      // local addresses only anyway (security.ts); curl -k and Postman's "SSL verification" setting do the same.
       rejectUnauthorized: false,
       lookup: (_hostname: string, options: any, callback: any) => {
         if (options?.all) {
@@ -130,7 +130,7 @@ port.on("message", async (message: StartMessage) => {
     } as any,
   });
 
-  // Worker'ın kendi gecikmesi (Volta'nın kendisi yetişebiliyor mu?)
+  // The worker's own lag (can Volta itself keep up?)
   const loopDelay = monitorEventLoopDelay({ resolution: 10 });
   loopDelay.enable();
 
@@ -147,13 +147,13 @@ port.on("message", async (message: StartMessage) => {
     batch = [];
   }
 
-  // Sayıya göre değil, zamana göre gönder: sunucu yavaşlasa da grafik akmaya devam eder
+  // Send by time, not by count: the chart keeps moving even if the server slows down
   const flushTimer = setInterval(flush, WORKER_BATCH_INTERVAL_MS);
 
   const inFlight = new Set<Promise<void>>();
 
-  // Testin başlangıç anı: zamanlayıcının sıfır noktası (ilk istek bu anda gider).
-  // Analiz, özet ve grafik saniyeleri buradan sayar.
+  // The test's start time: the scheduler's zero point (the first request goes out at this moment).
+  // Analysis, summary and chart seconds are counted from here.
   port.postMessage({ type: "started", startedAt: Date.now() });
 
   await runScheduledLoop(
@@ -172,7 +172,7 @@ port.on("message", async (message: StartMessage) => {
     profile
   );
 
-  // Süre doldu: yoldaki isteklerin bitmesini bekle (en fazla timeout kadar)
+  // Time's up: wait for in-flight requests to finish (at most the timeout)
   await Promise.allSettled([...inFlight]);
 
   clearInterval(flushTimer);

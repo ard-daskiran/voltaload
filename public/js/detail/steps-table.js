@@ -1,11 +1,11 @@
-// Kademe tablosu (sadece kademeli testlerde): her kademenin hedefi, gerçekleşeni, gecikmesi, hatası ve durumu.
+// Step table (stepped tests only): each step's target, achieved RPS, latency, errors and state.
 
 import { $ } from "../core/dom.js";
 import { formatNumber, formatMs, formatPercent } from "../core/i18n.js";
 import { latencyLevel } from "../core/latency.js";
 import { HEALTH_COLORS, healthLabel } from "../analysis/analysis-text.js";
 
-// Gecikme rengi (sınırlar core/latency.js'te): normal beyaz, yavaş sarı, kritik kırmızı
+// Latency color (limits in core/latency.js): normal white, slow yellow, critical red
 const LATENCY_CLASSES = {
     none: "text-on-surface-variant",
     normal: "text-on-surface",

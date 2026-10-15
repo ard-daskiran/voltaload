@@ -1,6 +1,6 @@
-// Test formu: alanlar, test türü, kademe önizlemesi, kilitleme, durum yazısı,
-// "Yeniden Çalıştır" ayarları ve dil değişiminde korunan taslak.
-// Sınırlar (RPS, süre, kademe) sunucudan gelir (/api/limits): tek kaynak config.ts.
+// Test form: fields, test type, step preview, locking, status text,
+// "Run again" settings and the draft kept across language changes.
+// Limits (RPS, duration, steps) come from the server (/api/limits): the single source is config.ts.
 
 import { $ } from "../core/dom.js";
 import { t, formatNumber } from "../core/i18n.js";
@@ -8,25 +8,25 @@ import { takeRerunSettings } from "../core/rerun.js";
 import { withDefaultScheme } from "../core/url.js";
 import { prettyJson } from "../core/json.js";
 
-// Dil değişince sayfa yenilenir: formdaki yazılmış ama başlatılmamış değerler bu anahtarla korunur
+// The page reloads when the language changes: values typed into the form but not yet started are kept under this key
 const DRAFT_STORAGE_KEY = "volta-form-draft";
 
-// Sunucudan gelen sınırlar. Gelene kadar (ya da gelemezse) form kendi kontrolünü yapmaz:
-// sunucu her isteği zaten kontrol ediyor, hata mesajı oradan gelir.
+// Limits from the server. Until they arrive (or if they can't), the form doesn't validate on its own:
+// the server checks every request anyway, and the error message comes from there.
 let limits = null;
 
-// Kademelerin RPS'i: sunucudaki zamanlayıcıyla aynı yuvarlama
+// RPS of the steps: same rounding as the scheduler on the server
 function stepTargets(rps, steps) {
     return Array.from({ length: steps }, (_, i) => Math.max(1, Math.round((rps * (i + 1)) / steps)));
 }
 
-// Kademeli test ayarları geçerli mi? Geçersizse hata mesajı döner.
+// Are the stepped test settings valid? Returns an error message if not.
 function checkStepped(rps, duration, steps) {
     if (!limits) return null;
     if (!Number.isInteger(steps) || steps < limits.minStepCount || steps > limits.maxStepCount) {
         return t("form.stepCountRange", { min: limits.minStepCount, max: limits.maxStepCount });
     }
-    // Her kademe saniyede en az 1 istek göndermeli
+    // Each step must send at least 1 request per second
     if (rps < steps) {
         return t("form.stepRpsTooLow", { min: steps });
     }
@@ -36,7 +36,7 @@ function checkStepped(rps, duration, steps) {
     return null;
 }
 
-// RPS ve süre geçerli mi? Her iki test türü için de geçerli. Geçersizse hata mesajı döner.
+// Are RPS and duration valid? Applies to both test types. Returns an error message if not.
 function checkBasics(rps, duration) {
     if (!limits) return null;
     if (!Number.isInteger(rps) || rps < limits.minTargetRps || rps > limits.maxTargetRps) {
@@ -71,7 +71,7 @@ export function createTestForm() {
     function updatePreview() {
         if (profile !== "STEPPED") return;
 
-        // Kullanıcı daha bir şey yazmadıysa hata gösterme (başlatırken yine kontrol edilir)
+        // Don't show an error if the user hasn't typed anything yet (it's checked again on start)
         if (rpsInput.value === "" || durationInput.value === "") {
             stepPreview.textContent = "";
             return;
@@ -80,7 +80,7 @@ export function createTestForm() {
         const rps = Number(rpsInput.value);
         const duration = Number(durationInput.value);
         const steps = Number(stepCountInput.value);
-        // Önce RPS ve süre, sonra kademe kuralları
+        // RPS and duration first, then the step rules
         const error = checkBasics(rps, duration) ?? checkStepped(rps, duration, steps);
 
         stepPreview.classList.toggle("text-signal-error", Boolean(error));
@@ -99,7 +99,7 @@ export function createTestForm() {
         });
     }
 
-    // Sunucudan gelen sınırları kutulara uygula: min/max (klavye okları için) ve ipucu ("min 10")
+    // Apply the server's limits to the inputs: min/max (for the arrow keys) and a hint ("min 10")
     function applyLimits(newLimits) {
         limits = newLimits;
 
@@ -129,8 +129,8 @@ export function createTestForm() {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             applyLimits(await response.json());
         } catch (err) {
-            // Sınırlar gelmezse form kontrol yapmaz, sunucunun hata mesajı gösterilir
-            console.error("Test sınırları alınamadı:", err);
+            // If the limits don't arrive the form doesn't validate; the server's error message is shown
+            console.error("Could not fetch test limits:", err);
         }
     }
 
@@ -156,7 +156,7 @@ export function createTestForm() {
         statusText.classList.toggle("text-on-surface-variant", !isError);
     }
 
-    // Test sürerken form kilitli, "Durdur" butonu ve canlı işareti görünür
+    // While a test runs the form is locked, and the "Stop" button and live indicator are visible
     function setLocked(isLocked) {
         locked = isLocked;
         for (const el of [urlInput, bookBtn, methodSelect, rpsInput, durationInput, stepCountInput, bodyInput, ...profileButtons]) {
@@ -175,7 +175,7 @@ export function createTestForm() {
         stopBtn.disabled = busy;
     }
 
-    // Formdaki değerleri sunucuya gidecek biçime çevirir. Geçersizse { ok: false, error } döner.
+    // Converts the form values to the shape sent to the server. Returns { ok: false, error } if invalid.
     function readPayload() {
         const targetRps = Number(rpsInput.value);
         const duration = Number(durationInput.value);
@@ -189,7 +189,7 @@ export function createTestForm() {
             if (error) return { ok: false, error };
         }
 
-        // "localhost:5050/health" → "http://localhost:5050/health" (kutuda da görünsün, neyin test edildiği belli olsun)
+        // "localhost:5050/health" → "http://localhost:5050/health" (shown in the input too, so it's clear what's being tested)
         const url = withDefaultScheme(urlInput.value);
         urlInput.value = url;
 
@@ -216,22 +216,22 @@ export function createTestForm() {
         };
     }
 
-    // Çalışan bir teste yeniden bağlanırken formu o testin ayarlarıyla doldur
-    // (sunucudaki test yöneticisinin biçimi: durationSeconds, profile.type, profile.stepCount)
+    // When reconnecting to a running test, fill the form with that test's settings
+    // (in the server's test manager shape: durationSeconds, profile.type, profile.stepCount)
     function fillFromConfig(config) {
         const type = config.profile?.type ?? "CONSTANT";
         urlInput.value = config.url;
         methodSelect.value = config.method;
         rpsInput.value = config.targetRps;
         durationInput.value = config.durationSeconds;
-        // Gövde okunaklı olsun diye girintili
+        // Indented so the body is readable
         bodyInput.value = prettyJson(config.body ?? "");
         if (type === "STEPPED") stepCountInput.value = config.profile.stepCount;
         setProfile(type);
     }
 
-    // Formu verilen ayarlarla doldur (yeniden çalıştırma ve taslak ortak kullanır)
-    // (formun kendi biçimi: duration, loadProfile, stepCount). Verilmeyen RPS ve süre boş kalır.
+    // Fill the form with the given settings (shared by rerun and the draft)
+    // (in the form's own shape: duration, loadProfile, stepCount). RPS and duration stay empty if not given.
     function fillForm(settings) {
         urlInput.value = settings.url ?? "";
         methodSelect.value = settings.method ?? "GET";
@@ -242,18 +242,18 @@ export function createTestForm() {
         setProfile(settings.loadProfile === "STEPPED" ? "STEPPED" : "CONSTANT");
     }
 
-    // "Yeniden Çalıştır" ya da öneriden gelindiyse formu doldur. Dolduysa true döner.
+    // Fill the form if we came from "Run again" or a recommendation. Returns true if it was filled.
     function applyRerunSettings() {
         const settings = takeRerunSettings();
         if (!settings) return false;
 
-        // Body okunaklı olsun diye girintili yazılır
+        // The body is written indented so it's readable
         fillForm({ ...settings, body: prettyJson(settings.body ?? "") });
         setStatus(t("state.rerunLoaded"));
         return true;
     }
 
-    // Dil değişmeden önce: formdaki değerleri kaydet (test çalışıyorsa gerek yok, yeniden bağlanılır)
+    // Before the language changes: save the form values (not needed if a test is running; it reconnects)
     function saveDraft() {
         if (locked) return;
         try {
@@ -270,11 +270,11 @@ export function createTestForm() {
                 })
             );
         } catch {
-            // Kaydedilemezse form boş açılır, sorun değil
+            // If it can't be saved the form opens empty; that's fine
         }
     }
 
-    // Yenilenince taslağı geri yükle (bir kez). Yüklendiyse true döner.
+    // Restore the draft after reload (once). Returns true if it was restored.
     function restoreDraft() {
         try {
             const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
@@ -298,7 +298,7 @@ export function createTestForm() {
         stopBtn.addEventListener("click", handler);
     }
 
-    // --- Olaylar ---
+    // --- Events ---
     profileButtons.forEach((btn) => btn.addEventListener("click", () => setProfile(btn.dataset.profile)));
     for (const input of [rpsInput, durationInput, stepCountInput]) {
         input.addEventListener("input", updatePreview);
@@ -307,7 +307,7 @@ export function createTestForm() {
     setProfile("CONSTANT");
     loadLimits();
 
-    // Rehber için: formdaki URL'yi oku / yaz
+    // For the target book: read / write the URL in the form
     function getUrl() {
         return urlInput.value;
     }

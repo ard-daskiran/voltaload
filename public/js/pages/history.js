@@ -1,5 +1,5 @@
-// Geçmiş listesi: arama, filtre, sıralama ve sayfalama. Satıra tıklayınca detay sayfası açılır.
-// Detay sayfasından "← Geçmiş" ile dönülünce tıklanan teste yumuşakça kaydırılır ve vurgulanır.
+// History list: search, filter, sorting and pagination. Clicking a row opens the detail page.
+// When coming back from the detail page via "← History", it smoothly scrolls to the clicked test and highlights it.
 
 import { $ } from "../core/dom.js";
 import { t, formatNumber, applyTranslations } from "../core/i18n.js";
@@ -13,10 +13,10 @@ import { rememberListPosition } from "../history/return-to-list.js";
 import { showToast, showQueuedToast } from "../core/toast.js";
 
 const PAGE_SIZE = 20;
-const SEARCH_DELAY_MS = 300; // Yazmayı bıraktıktan bu kadar sonra ara
-const FOCUS_HIGHLIGHT_MS = 2000; // Geri dönülen testin vurgulanma süresi
-const FOCUS_SCROLL_MS = 450; // Satıra kayma animasyonunun süresi
-const FOCUS_COLOR = "rgba(100, 216, 215, 0.15)"; // secondary renginin %15'i
+const SEARCH_DELAY_MS = 300; // Search this long after typing stops
+const FOCUS_HIGHLIGHT_MS = 2000; // How long the returned-to test stays highlighted
+const FOCUS_SCROLL_MS = 450; // Duration of the scroll-to-row animation
+const FOCUS_COLOR = "rgba(100, 216, 215, 0.15)"; // 15% of the secondary color
 
 renderHeader();
 applyTranslations();
@@ -25,10 +25,10 @@ const searchInput = $("history-search");
 const methodButtons = document.querySelectorAll("[data-method]");
 
 let state = readQuery();
-let requestId = 0; // Hızlı yazarken eski cevap yenisinin üzerine yazmasın
+let requestId = 0; // So an old response doesn't overwrite a newer one while typing fast
 let searchTimer = null;
 
-// Detay sayfasından "← Geçmiş" ile dönüldüyse vurgulanacak test (sadece ilk yüklemede)
+// Test to highlight if we came back from the detail page via "← History" (first load only)
 let focusId = new URLSearchParams(window.location.search).get("focus");
 
 const table = createHistoryTable($("history-body"));
@@ -50,7 +50,7 @@ const sortMenu = createSortMenu({
     },
 });
 
-// Normal tıklama aynı sekmede, Ctrl/Cmd ile yeni sekmede. Önce listenin halini not et.
+// Normal click opens in the same tab, Ctrl/Cmd in a new tab. Note the list's state first.
 function openRun(run, event) {
     rememberListPosition(run.id);
     const url = `/test.html?id=${encodeURIComponent(run.id)}`;
@@ -58,21 +58,21 @@ function openRun(run, event) {
     else window.location.href = url;
 }
 
-// --- Geri dönülen teste kaydırma ---
+// --- Scrolling to the returned-to test ---
 
-// Tarayıcının bir sonraki çizim karesini bekle
+// Wait for the browser's next paint frame
 function nextFrame() {
     return new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
-// Hızlı başlayıp varışa doğru yavaşlayan hareket
+// Motion that starts fast and slows down toward the end
 function easeOutCubic(progress) {
     return 1 - Math.pow(1 - progress, 3);
 }
 
-// Geri dönülen testin satırına yumuşakça kaydır ve kısa süre vurgula.
-// Hedef her karede yeniden hesaplanır: Tailwind stilleri ya da yazı tipleri sayfa boyunu
-// kayma sırasında değiştirse bile satırın tam üstünde durulur.
+// Smoothly scroll to the returned-to test's row and briefly highlight it.
+// The target is recomputed every frame: even if Tailwind styles or fonts change the page height
+// during the scroll, it stops right on the row.
 async function focusRow(id) {
     const row = document.querySelector(`[data-run-id="${CSS.escape(id)}"]`);
     if (!row) return;
@@ -80,16 +80,16 @@ async function focusRow(id) {
     try {
         await document.fonts.ready;
     } catch {
-        // Yazı tipi bilgisi alınamazsa beklemeden devam et
+        // If font info isn't available, continue without waiting
     }
     await nextFrame();
     await nextFrame();
 
-    // Vurgu: doğrudan renk (Tailwind'e bağlı değil). Satırdaki transition-colors sayesinde yumuşakça kaybolur.
+    // Highlight: a direct color (not tied to Tailwind). It fades out smoothly thanks to the row's transition-colors.
     row.style.backgroundColor = FOCUS_COLOR;
     setTimeout(() => (row.style.backgroundColor = ""), FOCUS_HIGHLIGHT_MS);
 
-    // Kullanıcı kendisi kaydırmaya başlarsa animasyonu bırak
+    // If the user starts scrolling themselves, abandon the animation
     const userEvents = ["wheel", "touchstart", "keydown", "mousedown"];
     let cancelled = false;
 
@@ -99,7 +99,7 @@ async function focusRow(id) {
     }
     userEvents.forEach((name) => window.addEventListener(name, cancel, { passive: true }));
 
-    // Satırı ekranın ortasına getirecek kaydırma konumu (sayfanın sınırları içinde)
+    // Scroll position that brings the row to the middle of the screen (within the page bounds)
     function targetY() {
         const rect = row.getBoundingClientRect();
         const y = window.scrollY + rect.top - (window.innerHeight - rect.height) / 2;
@@ -123,9 +123,9 @@ async function focusRow(id) {
     requestAnimationFrame(step);
 }
 
-// --- Liste ---
+// --- List ---
 
-// Butonların görünümünü duruma göre ayarla
+// Set the buttons' appearance based on the state
 function syncControls() {
     methodButtons.forEach((btn) => {
         const active = btn.dataset.method === state.method;
@@ -138,9 +138,9 @@ function syncControls() {
     sortMenu.setValue(state.sort);
 }
 
-// scrollToTop: yeni sayfanın verisi gelince sayfanın başına kaydır (sadece sayfa butonlarında)
+// scrollToTop: scroll to the top when the new page's data arrives (only for page buttons)
 async function refresh({ scrollToTop = false } = {}) {
-    writeQuery(state); // Adresteki "focus" burada temizlenir, sadece bilinen ayarlar yazılır
+    writeQuery(state); // "focus" in the URL is cleared here; only known settings are written
     syncControls();
 
     const id = ++requestId;
@@ -151,7 +151,7 @@ async function refresh({ scrollToTop = false } = {}) {
         const data = await response.json();
         if (id !== requestId) return;
 
-        // Adresteki sayfa artık yoksa (örneğin silinen testler yüzünden) son sayfaya git
+        // If the page in the URL no longer exists (e.g. because of deleted tests), go to the last page
         const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
         if (data.items.length === 0 && data.total > 0 && state.page > totalPages) {
             state.page = totalPages;
@@ -183,9 +183,9 @@ async function refresh({ scrollToTop = false } = {}) {
     }
 }
 
-// --- Veritabanı temizleme ---
+// --- Clearing the database ---
 
-// Filtreden bağımsız toplam test sayısı (pencerede gösterilir)
+// Total test count regardless of filters (shown in the dialog)
 async function fetchTotalCount() {
     const response = await fetch("/api/test-run?pageSize=1");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -200,7 +200,7 @@ async function clearDatabase() {
         console.error(err);
     }
 
-    // Silinecek test yoksa sadece bilgi ver (onay butonu yok)
+    // If there are no tests to delete, just inform (no confirm button)
     if (total === 0) {
         await confirmDialog({ title: t("clearDb.title"), message: t("clearDb.empty") });
         return;
@@ -230,7 +230,7 @@ async function clearDatabase() {
     }
 }
 
-// --- Olaylar ---
+// --- Events ---
 
 searchInput.value = state.search;
 searchInput.addEventListener("input", () => {
@@ -254,5 +254,5 @@ methodButtons.forEach((btn) => {
 $("clear-db-btn").addEventListener("click", clearDatabase);
 
 table.showMessage(t("history.loading"));
-showQueuedToast(); // Detay sayfasında silinen testin bildirimi
+showQueuedToast(); // Notification for a test deleted on the detail page
 refresh();

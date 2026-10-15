@@ -1,8 +1,8 @@
-// Chart.js eklentileri: parlama, dikey kesikli çizgi, perde. Ve ortalama çizgisinin dolgusu.
+// Chart.js plugins: glow, vertical dashed line, curtain. And the fill under the average line.
 
 import { SERIES, SECOND_DOT } from "./chart-theme.js";
 
-// Ortalama, p95 ve p99 çizgilerinde hafif parlama
+// Subtle glow on the average, p95 and p99 lines
 export const glowPlugin = {
     id: "voltaGlow",
     beforeDatasetDraw(chart, args) {
@@ -17,7 +17,7 @@ export const glowPlugin = {
     },
 };
 
-// Fare grafiğin üzerindeyken o anı gösteren dikey kesikli çizgi
+// Vertical dashed line marking the hovered moment while the mouse is over the chart
 export const crosshairPlugin = {
     id: "voltaCrosshair",
     afterDatasetsDraw(chart) {
@@ -40,14 +40,14 @@ export const crosshairPlugin = {
     },
 };
 
-// Perde: veri setleri sadece açılmış alana kadar çizilir.
-// getRevealedX: perdenin şu an hangi zamana kadar açık olduğunu döndüren fonksiyon.
+// Curtain: datasets are drawn only up to the revealed area.
+// getRevealedX: a function that returns up to what time the curtain is currently open.
 export function createRevealPlugin(getRevealedX) {
     return {
         id: "voltaReveal",
         beforeDatasetsDraw(chart) {
             const { left, top, right, bottom } = chart.chartArea;
-            const margin = SECOND_DOT.hoverRadius; // Kenardaki noktalar yarım kesilmesin
+            const margin = SECOND_DOT.hoverRadius; // So points at the edge aren't cut in half
             const edge = Math.min(right + margin, chart.scales.x.getPixelForValue(getRevealedX()) + margin);
 
             chart.ctx.save();
@@ -61,7 +61,7 @@ export function createRevealPlugin(getRevealedX) {
     };
 }
 
-// Ortalama çizgisinin altındaki, aşağı doğru silikleşen dolgu
+// Fill under the average line that fades out downward
 export function avgFill(context) {
     const { ctx, chartArea } = context.chart;
     if (!chartArea) return "transparent";

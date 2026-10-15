@@ -1,5 +1,5 @@
-// Öneriler penceresi. Kapasiteyle ilgili önerilerde "Bu testi çalıştır" butonu,
-// anasayfaya gidip formu önerilen ayarlarla (URL, yöntem ve body bu testinki) doldurur.
+// Recommendations dialog. In capacity-related recommendations, the "Run this test" button
+// goes to the home page and fills the form with the suggested settings (URL, method and body from this test).
 
 import { t } from "../core/i18n.js";
 import { rerunWith } from "../core/rerun.js";
@@ -23,7 +23,7 @@ function recommendationCard(rec, testRun) {
         el("p", "font-body-md text-[13px] leading-snug text-on-surface-variant", view.text)
     );
 
-    // Önerilen takip testi
+    // Suggested follow-up test
     if (view.test) {
         const row = el("div", "flex flex-wrap items-center justify-between gap-3 mt-1");
         const settings = el("span", "font-data-md text-[12px] text-on-surface border border-border-subtle bg-surface-container-low rounded px-2 py-1", followUpText(view.test));
@@ -63,7 +63,7 @@ export function openRecommendations(recommendations, testRun) {
     box.setAttribute("role", "dialog");
     box.setAttribute("aria-modal", "true");
 
-    // Başlık
+    // Title
     const header = el("div", "flex items-center justify-between px-5 py-4 border-b border-border-subtle bg-surface-container-low/70");
     const title = el("div", "flex items-center gap-2");
     const titleIcon = el("span", "material-symbols-outlined text-[20px] text-secondary", "tips_and_updates");
@@ -75,14 +75,14 @@ export function openRecommendations(recommendations, testRun) {
     closeBtn.append(el("span", "material-symbols-outlined text-[20px] block", "close"));
     header.append(title, closeBtn);
 
-    // Liste
+    // List
     const list = el("div", "overflow-y-auto");
     recommendations.forEach((rec) => list.append(recommendationCard(rec, testRun)));
 
     box.append(header, list);
     overlay.append(box);
 
-    // Kapanma: ✕, Esc, dışarıda basılıp dışarıda bırakılan tıklama
+    // Closing: ✕, Esc, a click pressed and released outside
     function close() {
         document.removeEventListener("keydown", onKey);
         overlay.remove();

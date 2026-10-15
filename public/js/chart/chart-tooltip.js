@@ -1,10 +1,10 @@
-// Grafiğin bilgi kutusu: fareye en yakın çizgi vurgulanır, tam saniyelerde istek sayıları da görünür.
+// The chart's tooltip: the line closest to the mouse is highlighted; at whole seconds request counts are shown too.
 
 import { t, formatNumber, formatMs } from "../core/i18n.js";
 import { SERIES, CHART_COLORS } from "./chart-theme.js";
 import { roundTime } from "./chart-time.js";
 
-// Bir satır: renkli nokta, ad ve değer. Vurgulanan satır kendi renginde ve kalın.
+// One row: colored dot, name and value. The highlighted row is in its own color and bold.
 function tooltipRow(label, value, color, active) {
     const row = document.createElement("div");
     row.className = "flex items-center justify-between gap-4";
@@ -46,7 +46,7 @@ function buildContent(x, meta, totals, highlighted) {
     title.textContent = t("chart.tooltip.time", { value: formatNumber(x, 1) });
     nodes.push(title);
 
-    // Dilimin gecikmeleri (istek sayısı burada gösterilmez, yanlış anlaşılmasın)
+    // The window's latencies (request counts aren't shown here, to avoid confusion)
     if (meta?.connectionOnly) {
         nodes.push(plainRow(t("chart.connectionError"), CHART_COLORS.error, "font-semibold"));
     } else if (meta) {
@@ -56,17 +56,17 @@ function buildContent(x, meta, totals, highlighted) {
             tooltipRow(t("chart.series.p99"), formatMs(meta.p99), CHART_COLORS.p99, highlighted === SERIES.P99)
         );
 
-        // Tam saniye değilse hata sadece kodlarla (sayı yok), tam saniyede aşağıda sayıyla yazılır
+        // If it's not a whole second, errors are shown by code only (no count); at a whole second they're written below with counts
         if (meta.hasError && !totals) {
             nodes.push(plainRow(`${t("chart.tooltip.errors")}: ${meta.errorCodes.join(", ")}`, CHART_COLORS.error, "mt-1"));
         }
     }
 
-    // Tam saniye: biten saniyenin istek sayıları (1,0'da → 1. saniye, yani 0–1 arası)
-    //   Gönderilen: Volta'nın o saniyedeki hedefi
-    //   Cevap gelen: sunucudan dönen her cevap, hatalılar dahil (önceki saniyelerden kalanlar da düşebilir)
-    //   Başarılı: hatasız cevaplar
-    // Üçü eşitse sunucu yetişiyor; aralarındaki fark açıldıkça zorlanıyor.
+    // Whole second: request counts of the finished second (at 1.0 → second 1, i.e. between 0–1)
+    //   Sent: Volta's target for that second
+    //   Responses: every response from the server, errors included (leftovers from earlier seconds may land here too)
+    //   Successful: responses without errors
+    // If all three are equal the server is keeping up; the wider the gap between them, the more it's straining.
     if (totals) {
         const separator = document.createElement("div");
         separator.className = "mt-1 pt-1 border-t border-border-subtle";
@@ -99,13 +99,13 @@ function buildContent(x, meta, totals, highlighted) {
     return nodes;
 }
 
-// Bilgi kutusunu kurar.
-//   element: kutunun HTML öğesi
-//   lookup(x): o zamandaki dilimin bilgilerini { meta, totals } olarak döndüren fonksiyon
+// Sets up the tooltip.
+//   element: the box's HTML element
+//   lookup(x): a function that returns the window's info at that time as { meta, totals }
 export function createChartTooltip({ element, lookup }) {
     let lastMouseY = null;
 
-    // Fareye dikeyde en yakın görünür çizgiyi bul (o satır vurgulanır)
+    // Find the visible line vertically closest to the mouse (that row is highlighted)
     function pickHighlighted(chart, meta, totals) {
         if (lastMouseY === null) return SERIES.AVG;
 
@@ -134,7 +134,7 @@ export function createChartTooltip({ element, lookup }) {
         return candidates[0].series;
     }
 
-    // Chart.js'in "external" bilgi kutusu fonksiyonu
+    // Chart.js's "external" tooltip function
     function render({ chart, tooltip }) {
         if (tooltip.opacity === 0 || !tooltip.dataPoints?.length) {
             element.hidden = true;
@@ -153,7 +153,7 @@ export function createChartTooltip({ element, lookup }) {
         element.replaceChildren(...buildContent(x, meta, totals, highlighted));
         element.hidden = false;
 
-        // Konum: noktanın sağında, sığmazsa solunda. Dikeyde farenin yanında, grafik alanının içinde.
+        // Position: right of the point, or left if it doesn't fit. Vertically next to the mouse, inside the chart area.
         const gap = 14;
         const width = element.offsetWidth;
         const height = element.offsetHeight;
@@ -169,7 +169,7 @@ export function createChartTooltip({ element, lookup }) {
         element.style.top = `${top}px`;
     }
 
-    // Fare dikeyde hareket edince vurgulanan çizgi değişsin
+    // Change the highlighted line when the mouse moves vertically
     function handleHover(event, _elements, chart) {
         lastMouseY = event.y;
         if (chart.tooltip?.opacity > 0) render({ chart, tooltip: chart.tooltip });

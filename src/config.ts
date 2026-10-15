@@ -1,100 +1,100 @@
-// Volta'nın ayarları tek bir yerden yönetilir.
-// Değerleri değiştirebilirsin; Volta açılırken dosyanın sonundaki kurallara göre kontrol edilir,
-// geçersiz bir değer varsa Volta açılmaz ve ne yanlış olduğunu terminale yazar.
+// Volta's settings are managed in one place.
+// You can change the values; on startup Volta checks them against the rules at the end of this file,
+// and if a value is invalid Volta won't start and prints what's wrong to the terminal.
 
-// Volta'nın arayüzünün çalıştığı adres ve port.
-// 127.0.0.1: sadece bu bilgisayardan erişilebilir, aynı ağdaki başkaları erişemez.
+// Address and port Volta's UI runs on.
+// 127.0.0.1: reachable only from this computer, not by others on the same network.
 export const VOLTA_HOST = "127.0.0.1";
-// Port .env'deki VOLTA_PORT'tan (yoksa 4400). Adı bilerek "PORT" değil: birçok geliştirici kendi projesi için
-// terminalinde PORT=3000 ayarlar, Volta da oradan açılmaya çalışıp test edilen projeyle çakışmasın.
-// Adres (VOLTA_HOST) .env'den değiştirilemez: Volta yanlışlıkla bütün ağa açılmasın.
+// Port comes from VOLTA_PORT in .env (4400 if missing). It's deliberately not named "PORT": many developers set
+// PORT=3000 in their terminal for their own project, and Volta shouldn't pick that up and clash with the tested project.
+// The address (VOLTA_HOST) can't be changed from .env, so Volta is never accidentally exposed to the whole network.
 export const VOLTA_PORT = Number(process.env.VOLTA_PORT ?? 4400);
 
-// Volta'ya tarayıcıdan sadece bu adlarla ulaşılabilir (port VOLTA_PORT). Başka bir adla gelen istekler reddedilir:
-// kötü niyetli bir sitenin kendi alan adını 127.0.0.1'e çevirip tarayıcı üzerinden Volta'yı kullanmasını
-// (DNS rebinding) engeller.
+// Volta can be reached from the browser only under these names (port VOLTA_PORT). Requests under any other name are rejected:
+// this stops a malicious site from pointing its own domain at 127.0.0.1 and using Volta through the browser
+// (DNS rebinding).
 export const ALLOWED_HOSTNAMES = ["localhost", "127.0.0.1", "[::1]"];
 
-// Test sınırları (arayüz de bunları /api/limits'ten alır)
+// Test limits (the UI also gets these from /api/limits)
 export const MIN_TARGET_RPS = 10;
 export const MAX_TARGET_RPS = 1000;
 export const MIN_DURATION_SECONDS = 1;
 export const MAX_DURATION_SECONDS = 60;
 
-// Kademeli test sınırları
+// Stepped test limits
 export const MIN_STEP_COUNT = 2;
 export const MAX_STEP_COUNT = 10;
-// Her kademe en az bu kadar sürmeli (kuyruğun büyüdüğünü görebilmek için)
+// Each step must last at least this long (to be able to see the queue grow)
 export const MIN_STEP_DURATION_SECONDS = 2;
 
-// Ön kontrolde bağlantı denemesi için bekleme süresi
+// Wait time for the connection attempt in the pre-check
 export const CONNECT_CHECK_TIMEOUT_MS = 2000;
 
-// Canlı akış ve veritabanı yazma aralıkları.
-// LIVE_WINDOW_MS grafiğin dilim süresi: canlı grafik, sayfa yenileme ve detay sayfası aynı değeri kullanır.
-// 1000'i tam bölmeli (100, 200, 250, 500...): grafik saniyeleri bu dilimlerden toplar.
+// Live stream and database write intervals.
+// LIVE_WINDOW_MS is the chart's window length: the live chart, page reload and detail page use the same value.
+// It must divide 1000 evenly (100, 200, 250, 500...): the chart builds seconds from these windows.
 export const LIVE_WINDOW_MS = 200;
 export const DB_FLUSH_INTERVAL_MS = 500;
 
 
-// Worker sonuçları bu aralıkla toplu gönderir. Canlı yayın bir dilimi, süresi dolduktan LIVE_EMIT_DELAY_MS sonra
-// gönderir: o dilime ait son paket de yetişsin diye bu değer WORKER_BATCH_INTERVAL_MS'ten büyük olmalı.
+// The worker sends results in batches at this interval. The live stream sends a window LIVE_EMIT_DELAY_MS after it ends:
+// this value must be greater than WORKER_BATCH_INTERVAL_MS so the window's last batch also makes it in.
 export const WORKER_BATCH_INTERVAL_MS = 100;
 export const LIVE_EMIT_DELAY_MS = 150;
 
-// Worker'ın kendi gecikmesi bu değeri aşarsa "Volta zorlanıyor" uyarısı verilir
+// If the worker's own lag exceeds this value, a "Volta is under strain" warning is shown
 export const WORKER_LAG_WARNING_MS = 50;
 
-// Hedef URL'nin en fazla uzunluğu (test başlatma ve URL rehberi)
+// Maximum target URL length (test start and target book)
 export const MAX_URL_LENGTH = 2000;
 
-// Arama kutularına yazılabilecek en uzun metin (geçmiş listesi ve URL rehberi)
+// Longest text allowed in search boxes (history list and target book)
 export const MAX_SEARCH_LENGTH = 200;
 
-// --- Ayarların kontrolü ---
-// Volta açılırken çalışır (server.ts). Buradaki kurallar kodun doğru çalışması için şart:
-// ayarlar değiştirilebilir, kurallar değiştirilemez. Bütün sorunlar tek seferde listelenir.
-// Mesajlar İngilizce (terminalde görünür).
+// --- Settings validation ---
+// Runs when Volta starts (server.ts). These rules are required for the code to work correctly:
+// settings can be changed, rules can't. All problems are listed at once.
+// Messages are in English (shown in the terminal).
 
-// MAX_TARGET_RPS en fazla bu kadar yükseltilebilir. Üstünde zamanlayıcı ve worker yetişemez,
-// ölçümler güvenilmez olur (1000 RPS'te Volta gecikmesi ~14 ms ölçüldü).
+// MAX_TARGET_RPS can be raised to at most this value. Above it the scheduler and worker can't keep up,
+// and measurements become unreliable (Volta lag was measured at ~14 ms at 1000 RPS).
 const RPS_CEILING = 4000;
 
 export function validateConfig(): string[] {
   const problems: string[] = [];
 
-  // En az "min" olan bir tam sayı mı?
+  // Is it a whole number of at least "min"?
   const wholeAtLeast = (name: string, value: number, min: number) => {
     if (!Number.isInteger(value) || value < min) {
       problems.push(`${name} must be a whole number of at least ${min} (current: ${value})`);
     }
   };
 
-  // 0'dan büyük bir sayı mı?
+  // Is it a number greater than 0?
   const positive = (name: string, value: number) => {
     if (!Number.isFinite(value) || value <= 0) {
       problems.push(`${name} must be greater than 0 (current: ${value})`);
     }
   };
 
-  // Üst sınır alt sınırdan küçük olmasın
+  // The upper limit must not be below the lower limit
   const notBelow = (maxName: string, max: number, minName: string, min: number) => {
     if (max < min) {
       problems.push(`${maxName} (${max}) cannot be lower than ${minName} (${min})`);
     }
   };
 
-  // Port: ortam değişkeninden geliyor, "abc" ya da boş olabilir
+  // Port: comes from an environment variable, could be "abc" or empty
   if (!Number.isInteger(VOLTA_PORT) || VOLTA_PORT < 1 || VOLTA_PORT > 65535) {
     problems.push(`VOLTA_PORT must be a whole number between 1 and 65535 (current: "${process.env.VOLTA_PORT}")`);
   }
 
-  // Tarayıcı varsayılan portu (80) adrese yazmaz; Volta'nın güvenlik kontrolleri portu adreste bekliyor
+  // Browsers leave the default port (80) out of the address; Volta's security checks expect the port in the address
   if (VOLTA_PORT === 80) {
     problems.push("VOLTA_PORT cannot be 80 (browsers leave the default port out of the address). Use another port, e.g. 4400");
   }
 
-  // Test sınırları: 0 saniyelik ya da saniyede 0 istek gönderen test anlamsız
+  // Test limits: a 0-second test or one sending 0 requests per second is meaningless
   wholeAtLeast("MIN_TARGET_RPS", MIN_TARGET_RPS, 1);
   wholeAtLeast("MAX_TARGET_RPS", MAX_TARGET_RPS, 1);
   notBelow("MAX_TARGET_RPS", MAX_TARGET_RPS, "MIN_TARGET_RPS", MIN_TARGET_RPS);
@@ -106,13 +106,13 @@ export function validateConfig(): string[] {
   wholeAtLeast("MAX_DURATION_SECONDS", MAX_DURATION_SECONDS, 1);
   notBelow("MAX_DURATION_SECONDS", MAX_DURATION_SECONDS, "MIN_DURATION_SECONDS", MIN_DURATION_SECONDS);
 
-  // Kademeli test: tek kademe, sabit testin aynısı olur
+  // Stepped test: a single step would be the same as a constant test
   wholeAtLeast("MIN_STEP_COUNT", MIN_STEP_COUNT, 2);
   wholeAtLeast("MAX_STEP_COUNT", MAX_STEP_COUNT, 2);
   notBelow("MAX_STEP_COUNT", MAX_STEP_COUNT, "MIN_STEP_COUNT", MIN_STEP_COUNT);
   positive("MIN_STEP_DURATION_SECONDS", MIN_STEP_DURATION_SECONDS);
 
-  // Zaman aralıkları
+  // Time intervals
   positive("CONNECT_CHECK_TIMEOUT_MS", CONNECT_CHECK_TIMEOUT_MS);
   positive("DB_FLUSH_INTERVAL_MS", DB_FLUSH_INTERVAL_MS);
   positive("WORKER_LAG_WARNING_MS", WORKER_LAG_WARNING_MS);
@@ -125,7 +125,7 @@ export function validateConfig(): string[] {
     );
   }
 
-  // Grafik saniyeleri dilimlerden toplar: bir saniye tam sayıda dilim olmalı
+  // The chart builds seconds from windows: a second must hold a whole number of windows
   wholeAtLeast("LIVE_WINDOW_MS", LIVE_WINDOW_MS, 1);
   if (Number.isInteger(LIVE_WINDOW_MS) && LIVE_WINDOW_MS > 0 && 1000 % LIVE_WINDOW_MS !== 0) {
     problems.push(`LIVE_WINDOW_MS must divide 1000 evenly, e.g. 100, 200, 250, 500 (current: ${LIVE_WINDOW_MS})`);

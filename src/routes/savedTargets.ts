@@ -1,5 +1,5 @@
-// URL rehberi adresleri: /api/targets
-// Hatalar { error, code, params } biçiminde gönderilir (errors.ts).
+// Target book endpoints: /api/targets
+// Errors are sent as { error, code, params } (errors.ts).
 
 import { Router } from "express";
 import { listSavedTargets, createSavedTarget, deleteSavedTarget, suggestionFor } from "../services/savedTargets.js";
@@ -8,12 +8,12 @@ import { apiError, errorBody } from "../errors.js";
 export function createSavedTargetRouter(): Router {
   const router = Router();
 
-  // Liste (isteğe bağlı arama: ?search=test)
+  // List (optional search: ?search=test)
   router.get("/", async (req, res) => {
     res.json(await listSavedTargets(req.query.search));
   });
 
-  // Kaydetme önerisi: ?url=http://... → { saved, runCount }
+  // Save suggestion: ?url=http://... → { saved, runCount }
   router.get("/suggest", async (req, res) => {
     const url = typeof req.query.url === "string" ? req.query.url.trim() : "";
     if (!url) {
@@ -22,7 +22,7 @@ export function createSavedTargetRouter(): Router {
     res.json(await suggestionFor(url));
   });
 
-  // Yeni kayıt: { name, url }
+  // New entry: { name, url }
   router.post("/", async (req, res) => {
     const result = await createSavedTarget(req.body);
     if (!result.ok) {
@@ -31,9 +31,9 @@ export function createSavedTargetRouter(): Router {
     res.status(201).json(result.target);
   });
 
-  // Kayıt silme
+  // Delete an entry
   router.delete("/:id", async (req, res) => {
-    // Sadece rakamlar ("0x28", "1e1" gibi yazımlar da sayıya çevrilebiliyordu)
+    // Digits only (forms like "0x28" or "1e1" could also be converted to numbers)
     if (!/^\d+$/.test(req.params.id)) {
       return res.status(400).json(errorBody(apiError("INVALID_ID")));
     }

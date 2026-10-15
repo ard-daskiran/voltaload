@@ -46,13 +46,13 @@
     </style>
   </head>
   <body class="min-h-screen font-body-md text-body-md overflow-x-hidden">
-    <!-- Üst menü: core/header.js doldurur -->
+    <!-- Top menu: filled by core/header.js -->
     <div id="app-header" data-active="dashboard"></div>
 
     <main
       class="pt-20 pb-10 px-margin-page max-w-[1920px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-gutter"
     >
-      <!-- Sol sütun: form -->
+      <!-- Left column: form -->
       <section class="lg:col-span-3 flex flex-col gap-4">
         <form
           id="test-form"
@@ -67,7 +67,7 @@
             Test Kur
           </h2>
 
-          <!-- Hedef URL (sağında kayıtlı hedefler butonu) -->
+          <!-- Target URL (with the saved targets button on its right) -->
           <div class="flex flex-col gap-2 group">
             <label
               for="url"
@@ -80,7 +80,7 @@
                 class="material-symbols-outlined absolute left-3 top-2.5 text-border-subtle group-focus-within:text-primary-container text-[20px]"
                 >link</span
               >
-              <!-- autocomplete="off": tarayıcının kendi "önceden yazdıkların" listesi çıkmasın -->
+              <!-- autocomplete="off": so the browser's own "previously typed" list doesn't appear -->
               <input
                 id="url"
                 required
@@ -103,7 +103,7 @@
             </div>
           </div>
 
-          <!-- Yöntem -->
+          <!-- Method -->
           <div class="flex flex-col gap-2 group">
             <label
               for="method"
@@ -120,7 +120,7 @@
             </select>
           </div>
 
-          <!-- Test türü -->
+          <!-- Test type -->
           <div class="flex flex-col gap-2">
             <span
               class="font-data-md text-data-md text-on-surface-variant"
@@ -147,7 +147,7 @@
             </div>
           </div>
 
-          <!-- RPS ve süre -->
+          <!-- RPS and duration -->
           <div class="grid grid-cols-2 gap-4">
             <div class="flex flex-col gap-2 group">
               <label
@@ -180,7 +180,7 @@
             </div>
           </div>
 
-          <!-- Kademe sayısı (sadece kademeli testte) -->
+          <!-- Step count (stepped test only) -->
           <div id="steps-block" hidden class="flex flex-col gap-2 group">
             <label
               for="stepCount"
@@ -247,13 +247,13 @@
         </form>
       </section>
 
-      <!-- Sağ sütun -->
+      <!-- Right column -->
       <section class="lg:col-span-9 flex flex-col gap-4">
-        <!-- Grafik kartı -->
+        <!-- Chart card -->
         <div
           class="border border-border-subtle bg-surface-container-lowest p-5 flex flex-col"
         >
-          <!-- Başlık satırı -->
+          <!-- Title row -->
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div class="flex flex-wrap items-center gap-3">
               <h2
@@ -267,7 +267,7 @@
                 ></span>
               </h2>
 
-              <!-- Nasıl okunur? -->
+              <!-- How to read it? -->
               <span class="group relative inline-flex">
                 <span
                   class="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-primary cursor-help"
@@ -285,7 +285,7 @@
                 </div>
               </span>
 
-              <!-- Volta durum göstergeleri -->
+              <!-- Volta status indicators -->
               <span
                 class="inline-flex items-center gap-1.5 border border-border-subtle px-2 py-1 font-data-md text-[12px] text-on-surface-variant whitespace-nowrap"
               >
@@ -311,7 +311,7 @@
             </button>
           </div>
 
-          <!-- Volta zorlanıyor uyarısı -->
+          <!-- "Volta is under strain" warning -->
           <div
             id="overload-warning"
             hidden
@@ -323,7 +323,7 @@
             >
           </div>
 
-          <!-- Açıklama satırı (tıklanınca çizgi gizlenir/gösterilir) -->
+          <!-- Legend row (clicking hides/shows a line) -->
           <div
             class="flex flex-wrap items-center gap-5 mb-3 font-data-md text-[12px] text-on-surface"
           >
@@ -369,7 +369,7 @@
             </button>
           </div>
 
-          <!-- Bilgi kutusu dışarı taşabilsin diye burada overflow-hidden yok -->
+          <!-- No overflow-hidden here so the info box can extend outside -->
           <div class="h-[380px] tech-grid border border-border-subtle relative">
             <canvas id="chart"></canvas>
             <div
@@ -380,7 +380,7 @@
           </div>
         </div>
 
-        <!-- Metrik kartları (data-hint: üzerine gelince bilgi kutusu) -->
+        <!-- Metric cards (data-hint: info box on hover) -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div
             data-hint="avg"
@@ -502,9 +502,9 @@
           </div>
         </div>
 
-        <!-- Durum kodları ve istek günlüğü -->
+        <!-- Status codes and request log -->
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <!-- Bilgi kutuları kesilmesin diye bu kartta overflow-hidden yok -->
+          <!-- No overflow-hidden on this card so the info boxes aren't clipped -->
           <div
             class="border border-border-subtle bg-surface-container-lowest p-4 flex flex-col gap-3"
           >

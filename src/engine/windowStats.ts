@@ -1,5 +1,5 @@
-// Bir grup sonucun (canlı akışta 200ms'lik dilim) özeti.
-// Hem canlı akış (testRunManager) hem de detay sayfası / sayfa yenileme (services/resultQueries) bu fonksiyonu kullanır.
+// Summary of a group of results (a 200ms window in the live stream).
+// Both the live stream (testRunManager) and the detail page / page reload (services/resultQueries) use this function.
 
 export interface ResultLike {
   statusCode: number;
@@ -8,27 +8,27 @@ export interface ResultLike {
   responseSize: number;
 }
 
-// Gecikme hesaplarına girer mi? Cevap gelenler ve TIMEOUT'lar evet.
-// Bağlantı hataları anında döner, gecikmeyi yapay olarak düşürür, hariç tutulur.
+// Does it count toward latency? Responses that arrived and TIMEOUTs do.
+// Connection errors return instantly and would artificially lower latency, so they're excluded.
 export function isLatencySample(r: { errorType: string | null }): boolean {
   return r.errorType === null || r.errorType === "TIMEOUT";
 }
 
-// Grafikte kırmızı yapan hatalar: cevap gelmeyen her istek + 5xx.
-// 4xx dahil değil: hızlı dönen bir 401/404 sunucunun sağlıklı olduğunu gösterir.
+// Errors shown in red on the chart: every request with no response + 5xx.
+// 4xx isn't included: a fast 401/404 shows the server is healthy.
 export function isServerError(r: { statusCode: number; errorType: string | null }): boolean {
   return r.errorType !== null || r.statusCode >= 500;
 }
 
-// Bağlantı hatası: TIMEOUT dışındaki, cevap gelmeyen istekler
+// Connection error: requests with no response, other than TIMEOUT
 export function isConnectionError(r: { errorType: string | null }): boolean {
   return r.errorType !== null && r.errorType !== "TIMEOUT";
 }
 
-// Yüzdelik ("en yakın sıra" tanımı): sıralı n değerde p'lik değer, ⌈n × p⌉. sıradaki değerdir.
-// (100 değerde p95 = 95. değer.) Özet, canlı dilimler ve analiz aynı hesabı kullanır.
+// Percentile ("nearest rank" definition): among n sorted values, the p value is the ⌈n × p⌉-th value.
+// (With 100 values, p95 = the 95th value.) The summary, live windows and analysis use the same calculation.
 export function percentileIndex(count: number, p: number): number {
-  // Küçük pay: 0,95 × 60 gibi çarpımlar kayan nokta yüzünden 57,0000001 çıkıp bir üst sıraya atlamasın
+  // Small margin: so products like 0.95 × 60 don't come out as 57.0000001 due to floating point and jump to the next rank
   return Math.min(count - 1, Math.max(0, Math.ceil(count * p - 1e-9) - 1));
 }
 

@@ -38,10 +38,10 @@
     </style>
   </head>
   <body class="min-h-screen font-body-md text-body-md overflow-x-hidden">
-    <!-- Üst menü: core/header.js doldurur -->
+    <!-- Top menu: filled by core/header.js -->
     <div id="app-header" data-active="history"></div>
 
-    <!-- Test bulunamadı / yüklenemedi: ekranın ortasında küçük bir kart -->
+    <!-- Test not found / failed to load: a small card in the middle of the screen -->
     <div
       id="detail-error"
       hidden
@@ -79,7 +79,7 @@
       id="detail-main"
       class="pt-20 pb-10 px-margin-page max-w-[1920px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-gutter"
     >
-      <!-- Sol sütun: geri dönüş, rapor ve silme; altında test ayarları ve analiz -->
+      <!-- Left column: back, report and delete; below them the test settings and analysis -->
       <section class="lg:col-span-3 flex flex-col gap-3">
         <div class="flex items-center justify-between gap-3">
           <a
@@ -94,7 +94,7 @@
           </a>
 
           <div class="flex items-center gap-2">
-            <!-- Rapor: yeni sekmede açılır. Test yüklenince aktif olur. -->
+            <!-- Report: opens in a new tab. Enabled once the test loads. -->
             <a
               id="report-btn"
               href="#"
@@ -108,7 +108,7 @@
               <span data-i18n="report.button">RAPOR AL</span>
             </a>
 
-            <!-- Testi sil: sadece simge, ipucu üzerine gelince -->
+            <!-- Delete test: icon only, tooltip on hover -->
             <button
               type="button"
               id="delete-btn"
@@ -123,7 +123,7 @@
           </div>
         </div>
 
-        <!-- Test ayarları -->
+        <!-- Test settings -->
         <div
           class="border border-border-subtle bg-surface-container-lowest p-5 flex flex-col gap-4 relative"
         >
@@ -136,7 +136,7 @@
             Test Ayarları
           </h2>
 
-          <!-- Hedef: rehberde kayıtlıysa üstte isim, altında küçük URL -->
+          <!-- Target: if saved in the target book, the name on top and a small URL below -->
           <div class="flex flex-col gap-1">
             <span
               class="font-data-md text-[12px] text-outline"
@@ -155,7 +155,7 @@
             >
           </div>
 
-          <!-- Diğer ayarlar (etiketler tek satırda kalır) -->
+          <!-- Other settings (labels stay on one line) -->
           <dl class="flex flex-col gap-2.5 font-data-md text-data-md">
             <div class="flex justify-between gap-3">
               <dt
@@ -214,7 +214,7 @@
             </div>
           </dl>
 
-          <!-- JSON Body (sadece doluysa) -->
+          <!-- JSON Body (only if set) -->
           <div id="d-body-block" hidden class="flex flex-col gap-2">
             <span
               class="font-data-md text-[12px] text-outline"
@@ -237,7 +237,7 @@
           </button>
         </div>
 
-        <!-- Analiz kartı: içeriği detail/analysis-card.js doldurur -->
+        <!-- Analysis card: content filled by detail/analysis-card.js -->
         <div
           class="border border-border-subtle bg-surface-container-lowest p-5 flex flex-col gap-4 relative"
         >
@@ -279,9 +279,9 @@
         </div>
       </section>
 
-      <!-- Sağ sütun -->
+      <!-- Right column -->
       <section class="lg:col-span-9 flex flex-col gap-4">
-        <!-- Hâlâ çalışan test bilgisi -->
+        <!-- Notice for a test that's still running -->
         <div
           id="running-notice"
           hidden
@@ -299,7 +299,7 @@
           >
         </div>
 
-        <!-- Yönlendirme uyarısı: cevapların en az yarısı 3xx ise -->
+        <!-- Redirect warning: if at least half the responses are 3xx -->
         <div
           id="redirect-notice"
           hidden
@@ -311,7 +311,7 @@
           <span id="redirect-notice-text"></span>
         </div>
 
-        <!-- Grafik kartı -->
+        <!-- Chart card -->
         <div
           class="border border-border-subtle bg-surface-container-lowest p-5 flex flex-col"
         >
@@ -324,7 +324,7 @@
                 Test Grafiği
               </h2>
 
-              <!-- Nasıl okunur? -->
+              <!-- How to read it? -->
               <span class="group relative inline-flex">
                 <span
                   class="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-primary cursor-help"
@@ -355,7 +355,7 @@
             </button>
           </div>
 
-          <!-- Açıklama satırı -->
+          <!-- Legend row -->
           <div
             class="flex flex-wrap items-center gap-5 mb-3 font-data-md text-[12px] text-on-surface"
           >
@@ -411,7 +411,7 @@
           </div>
         </div>
 
-        <!-- Metrik kartları (tüm testin değerleri, "anlık" satırı yok; data-hint: bilgi kutusu) -->
+        <!-- Metric cards (whole-test values, no "now" row; data-hint: info box) -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div
             data-hint="avg"
@@ -501,9 +501,9 @@
           </div>
         </div>
 
-        <!-- Durum kodları ve özet -->
+        <!-- Status codes and summary -->
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <!-- Bilgi kutuları kesilmesin diye bu kartta overflow-hidden yok -->
+          <!-- No overflow-hidden on this card so the info boxes aren't clipped -->
           <div
             class="border border-border-subtle bg-surface-container-lowest p-4 flex flex-col gap-3"
           >
@@ -565,7 +565,7 @@
           </div>
         </div>
 
-        <!-- Kademe tablosu (sadece kademeli testlerde): detail/steps-table.js doldurur -->
+        <!-- Step table (stepped tests only): filled by detail/steps-table.js -->
         <section
           id="steps-section"
           hidden

@@ -1,5 +1,5 @@
-// Raporun bölümleri: üst bilgi, sonuç, ana ölçümler, grafik, analiz, ayrıntılar.
-// Kullanıcıdan gelen metinler (URL, isim, body) her zaman düz metin olarak eklenir.
+// The report's sections: header, result, key metrics, chart, analysis, details.
+// Text from the user (URL, name, body) is always added as plain text.
 
 import { t, formatNumber, formatMs, getLocale, formatPercent } from "../core/i18n.js";
 import { VERSION } from "../core/header.js";
@@ -22,7 +22,7 @@ import { REPORT_CHART_COLORS } from "./report-chart.js";
 import { latencyLevel } from "../core/latency.js";
 import { prettyJson } from "../core/json.js";
 
-// Beyaz zemine göre koyu durum renkleri (uygulamadaki renklerin karşılığı)
+// Dark state colors for a white background (counterparts of the app's colors)
 const REPORT_HEALTH = {
     HEALTHY: "#0e8f8e",
     BORDERLINE: "#c99700",
@@ -30,7 +30,7 @@ const REPORT_HEALTH = {
     COLLAPSED: "#e03131",
 };
 
-// Uygulamadaki renk → rapordaki karşılığı (olay ve öneri renkleri için)
+// App color → its counterpart in the report (for event and recommendation colors)
 const TO_REPORT_COLOR = {
     [HEALTH_COLORS.HEALTHY]: REPORT_HEALTH.HEALTHY,
     [HEALTH_COLORS.BORDERLINE]: REPORT_HEALTH.BORDERLINE,
@@ -41,7 +41,7 @@ const TO_REPORT_COLOR = {
 const BOLT_SVG =
     '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M37 7 L15 36 H30 L26 57 L49 27 H34 Z" fill="#f4c21a" stroke="#1b1f24" stroke-width="2" stroke-linejoin="round"/></svg>';
 
-// Küçük öğe oluşturucu: h("div", { class: "x" }, "metin", başkaÖğe)
+// Small element builder: h("div", { class: "x" }, "text", otherElement)
 function h(tag, props = {}, ...children) {
     const el = document.createElement(tag);
     for (const [key, value] of Object.entries(props ?? {})) {
@@ -50,7 +50,7 @@ function h(tag, props = {}, ...children) {
         else if (key === "style") Object.assign(el.style, value);
         else el.setAttribute(key, value);
     }
-    // İç içe listeler (örneğin [etiket, değer] çiftleri) tamamen açılır
+    // Nested arrays (e.g. [label, value] pairs) are fully flattened
     for (const child of children.flat(Infinity)) {
         if (child === null || child === undefined || child === false) continue;
         el.append(child instanceof Node ? child : String(child));
@@ -72,11 +72,11 @@ function profileText(testRun) {
         : t("form.profile.constant");
 }
 
-// --- Üst bilgi ve hedef ---
+// --- Header and target ---
 
 function headerBlock() {
     const brand = h("div", { class: "brand" });
-    brand.innerHTML = BOLT_SVG; // Sabit simge, kullanıcı verisi değil
+    brand.innerHTML = BOLT_SVG; // Fixed icon, not user data
     brand.append("VOLTA");
 
     return h(
@@ -107,7 +107,7 @@ function targetBlock(testRun) {
     );
 }
 
-// --- Sonuç: gösterge, kapasite, cümle ---
+// --- Result: gauge, capacity, sentence ---
 
 function gauge(state) {
     const bar = h("div", { class: "gauge-bar" });
@@ -162,7 +162,7 @@ function resultSection(analysis, testRun) {
     );
 }
 
-// --- Ana ölçümler ---
+// --- Key metrics ---
 
 function metricsSection(summary) {
     const seconds = summary ? summary.durationMs / 1000 : 0;
@@ -189,7 +189,7 @@ function metricsSection(summary) {
     );
 }
 
-// --- Grafik ---
+// --- Chart ---
 
 function chartSection(isStepped) {
     const legendItem = (label, color, dashed = false) =>
@@ -218,7 +218,7 @@ function chartSection(isStepped) {
     );
 }
 
-// --- Analiz: olaylar, kademeler, öneriler ---
+// --- Analysis: events, steps, recommendations ---
 
 function eventsTable(events) {
     return h(
@@ -241,7 +241,7 @@ function eventsTable(events) {
     );
 }
 
-// Gecikme rengi (sınırlar core/latency.js'te): normal siyah, yavaş hardal, kritik kırmızı
+// Latency color (limits in core/latency.js): normal black, slow mustard, critical red
 const LATENCY_STYLES = {
     none: {},
     normal: {},
@@ -335,7 +335,7 @@ function analysisSection(analysis) {
     return parts;
 }
 
-// --- Ayrıntılar: durum kodları, ayarlar, terimler, uyarı ---
+// --- Details: status codes, settings, terms, warning ---
 
 function statusCodesTable(statusCounts) {
     const total = Object.values(statusCounts).reduce((a, b) => a + b, 0);
@@ -400,8 +400,8 @@ function settingsBlock(testRun, summary) {
     );
 }
 
-// Terimler: üç sütunlu kartlar. Ortalama, p95 ve p99'un altındaki çizgi grafikteki renkleriyle aynı,
-// hata oranınınki kırmızı, diğerleri siyah.
+// Terms: three-column cards. The line under average, p95 and p99 matches their chart colors,
+// error rate's is red, the others are black.
 function glossaryBlock() {
     const terms = [
         ["chart.series.avg", "avg", REPORT_CHART_COLORS.avg],
@@ -439,7 +439,7 @@ function footer() {
     return h("div", { class: "footer" }, h("span", {}, t("report.footer", { version: VERSION })), h("span", {}, new Date().toLocaleString(getLocale())));
 }
 
-// --- Rapor ---
+// --- Report ---
 
 export function renderReport(container, { testRun, summary, analysis, statusCounts }) {
     const isStepped = testRun.loadProfile === "STEPPED";

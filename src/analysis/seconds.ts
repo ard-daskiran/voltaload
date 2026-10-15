@@ -1,17 +1,17 @@
 // seconds.ts
-// Ham sonuçlardan saniyelik özet: her saniye için istek sayıları, hata türleri ve sıralı gecikmeler.
-// Saniyeler testin başlangıcından sayılır. Her sonuç, isteğin GÖNDERİLDİĞİ saniyeye yazılır, cevabın geldiği
-// saniyeye değil. Analizin sorusu "her saniye gönderilen yükü sunucu kaldırabildi mi?". Böylece cevabı geç gelen
-// (örneğin her isteği 2 sn süren) sağlıklı bir sunucu, ilk saniyeleri boş görünüp "bağlantı koptu" sanılmaz.
-// (Grafik ise cevapları geldikleri ana göre gösterir: "şu anda sunucudan ne geliyor?")
-// Hiç sonucu olmayan saniyeler de listede yer alır (sunucu kilitlenmiş olabilir).
+// Per-second summary from raw results: request counts, error types and sorted latencies for each second.
+// Seconds are counted from the test start. Each result is placed in the second the request was SENT, not the second
+// its response arrived. The analysis asks "could the server handle the load sent each second?". This way a healthy server
+// with slow responses (e.g. 2 s per request) doesn't show empty first seconds and get mistaken for "connection lost".
+// (The chart, on the other hand, shows responses by arrival time: "what is coming from the server right now?")
+// Seconds with no results at all are also in the list (the server may have locked up).
 
 import { isLatencySample, isServerError, isConnectionError } from "../engine/windowStats.js";
 import { requestsBetween, type LoadProfile } from "../engine/scheduler.js";
 
-// Analiz edilen sürenin hemen sonrasında gönderilmiş görünen istekler (zamanlayıcının son anda yetiştirdikleri,
-// milisaniye yuvarlaması) son saniyeye yazılır. Daha sonrası analize girmez: durdurulan testte atılan kısa son
-// saniyenin istekleri bir önceki saniyeye karışmasın.
+// Requests that appear to be sent just after the analyzed duration (last-moment sends by the scheduler,
+// millisecond rounding) go into the last second. Anything later isn't analyzed: so the requests of a short last second
+// dropped from a stopped test don't get mixed into the previous second.
 const END_MARGIN_MS = 50;
 
 export interface ResultRow {
@@ -22,20 +22,20 @@ export interface ResultRow {
 }
 
 export interface SecondStats {
-  index: number; // 0 → 0–1 sn arası
-  span: number; // Saniyenin analize giren kısmı (1; durdurulan testin son saniyesinde kesirli olabilir)
-  targetRps: number; // O saniyede (o kısımda) gönderilmesi gereken istek sayısı (zamanlayıcıyla aynı hesap)
-  inTest: boolean; // Analiz edilen sürenin içinde mi?
+  index: number; // 0 → between 0–1 s
+  span: number; // Analyzed part of the second (1; can be fractional for the last second of a stopped test)
+  targetRps: number; // Number of requests that should be sent in that second (that part) (same calculation as the scheduler)
+  inTest: boolean; // Is it within the analyzed duration?
   total: number;
-  success: number; // Sunucu hatası olmayanlar (4xx dahil)
-  serverErrors: number; // 5xx + cevapsız
-  connectionErrors: number; // Reddedildi, koptu, ağ hatası
+  success: number; // Not server errors (4xx included)
+  serverErrors: number; // 5xx + no response
+  connectionErrors: number; // Refused, reset, network error
   timeouts: number;
   statusCounts: Record<string, number>;
-  latencies: number[]; // Sıralı (bağlantı hataları hariç)
+  latencies: number[]; // Sorted (connection errors excluded)
 }
 
-// Ortanca: tek bir sıçrama ortalamayı bozar, ortancayı bozmaz
+// Median: a single spike skews the mean but not the median
 export function median(values: number[]): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -44,9 +44,9 @@ export function median(values: number[]): number | null {
 }
 
 interface BuildOptions {
-  origin: number; // Saniyelerin sayıldığı an (testin başlangıcı, ms)
-  configuredDuration: number; // Testin ayarlanan süresi (hedef hesabı için)
-  effectiveDuration: number; // Analize girecek süre (sn; durdurulan testte kesirli olabilir)
+  origin: number; // Moment seconds are counted from (test start, ms)
+  configuredDuration: number; // The test's configured duration (for the target calculation)
+  effectiveDuration: number; // Duration to analyze (s; can be fractional for a stopped test)
   targetRps: number;
   profile: LoadProfile;
 }
@@ -56,12 +56,12 @@ export function buildSeconds(rows: ResultRow[], options: BuildOptions): SecondSt
 
   const { configuredDuration, effectiveDuration, targetRps, profile, origin } = options;
 
-  // Analize giren son saniye
+  // Last analyzed second
   const lastIndex = Math.max(0, Math.ceil(effectiveDuration) - 1);
   const endMs = effectiveDuration * 1000;
 
   const createSecond = (index: number): SecondStats => {
-    // Durdurulan testin son saniyesi kısmi olabilir: sadece durma anına kadar gönderilmesi gerekenler
+    // The last second of a stopped test can be partial: only what should have been sent up to the stop time
     const end = Math.min(index + 1, effectiveDuration);
     return {
       index,
@@ -81,7 +81,7 @@ export function buildSeconds(rows: ResultRow[], options: BuildOptions): SecondSt
   const byIndex = new Map<number, SecondStats>();
 
   for (const row of rows) {
-    // Gönderilme anı (testin başından, ms): cevabın geldiği an − cevap süresi
+    // Send time (from the test start, ms): arrival time − response time
     const sentOffset = row.timestamp.getTime() - row.responseTime - origin;
     if (sentOffset > endMs + END_MARGIN_MS) continue;
     const index = Math.min(Math.max(0, Math.floor(sentOffset / 1000)), lastIndex);
@@ -104,7 +104,7 @@ export function buildSeconds(rows: ResultRow[], options: BuildOptions): SecondSt
     if (isLatencySample(row)) second.latencies.push(row.responseTime);
   }
 
-  // Boş saniyeler dahil kesintisiz liste
+  // Continuous list, empty seconds included
   const seconds: SecondStats[] = [];
   for (let i = 0; i <= lastIndex; i++) {
     const second = byIndex.get(i) ?? createSecond(i);

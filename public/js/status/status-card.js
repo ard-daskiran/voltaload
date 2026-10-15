@@ -1,10 +1,10 @@
-// Durum kodu kartı: oran çubuğu, kod başına satır ve fareyle açılan bilgi kutusu.
-// Satırlar silinip yeniden oluşturulmaz, sadece sayıları güncellenir (bilgi kutusu titremez).
+// Status code card: ratio bar, one row per code, and an info box that opens on hover.
+// Rows aren't deleted and recreated, only their counts are updated (so the info box doesn't flicker).
 
 import { t, formatNumber } from "../core/i18n.js";
 import { statusCategory, statusDescription, statusName, statusStyle, sortStatusCodes } from "./status-info.js";
 
-// Bir kod için satır: nokta, kod, kısa ad, sayı, yüzde ve bilgi kutusu
+// Row for a code: dot, code, short name, count, percentage and info box
 function createStatusRow(code) {
     const style = statusStyle(code);
 
@@ -31,7 +31,7 @@ function createStatusRow(code) {
     percentEl.className = "text-outline w-16 text-right";
     percentEl.dataset.role = "percent";
 
-    // Bilgi kutusu: ad (kendi renginde), açıklama, kategori etiketi
+    // Info box: name (in its own color), description, category label
     const tooltip = document.createElement("div");
     tooltip.className =
         "pointer-events-none absolute top-full left-5 mt-1 w-[300px] z-30 " +
@@ -61,7 +61,7 @@ function updateStatusRow(row, count, total) {
     row.querySelector('[data-role="percent"]').textContent = t("statusCard.percent", { value: formatNumber(percent, 1) });
 }
 
-// Kartı kurar. Parametre olarak kartın içindeki öğeleri alır, reset() ve update() döndürür.
+// Builds the card. Takes the card's inner elements as parameters, returns reset() and update().
 export function createStatusCard({ rowsEl, barEl, emptyEl, totalEl }) {
     function reset() {
         rowsEl.innerHTML = "";
@@ -90,14 +90,14 @@ export function createStatusCard({ rowsEl, barEl, emptyEl, totalEl }) {
             updateStatusRow(row, statusCounts[code], total);
         }
 
-        // Yeni kod eklendiyse sırayı düzelt (appendChild var olan satırı silmez, sadece taşır)
+        // If a new code was added, fix the order (appendChild doesn't delete an existing row, it just moves it)
         if (added) {
             for (const code of codes) {
                 rowsEl.appendChild(rowsEl.querySelector(`[data-code="${code}"]`));
             }
         }
 
-        // Oran çubuğu
+        // Ratio bar
         barEl.innerHTML = "";
         if (total > 0) {
             for (const code of codes) {

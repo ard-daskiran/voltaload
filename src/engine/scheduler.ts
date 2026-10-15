@@ -7,15 +7,15 @@ export interface LoadProfile {
 
 const CONSTANT_PROFILE: LoadProfile = { type: "CONSTANT" };
 
-// Kayan nokta hatalarına karşı küçük pay (örneğin 20/3 sn'lik kademelerde)
+// Small margin against floating-point errors (e.g. with 20/3 s steps)
 const EPSILON = 1e-9;
 
-// Kademenin (0'dan sayılır) RPS'i: tam sayıya yuvarlanır, formda görünen değerle aynı. En az 1.
+// RPS of a step (counted from 0): rounded to a whole number, same as the value shown in the form. At least 1.
 function stepRps(stepIndex: number, targetRps: number, steps: number): number {
   return Math.max(1, Math.round((targetRps * (stepIndex + 1)) / steps));
 }
 
-// Testin belirli bir anında (saniye) hedeflenen RPS
+// Target RPS at a given moment (second) of the test
 export function targetRpsAt(
   seconds: number,
   targetRps: number,
@@ -30,7 +30,7 @@ export function targetRpsAt(
   return stepRps(stepIndex, targetRps, steps);
 }
 
-// Testin başından verilen ana kadarki "istek miktarı": RPS eğrisinin altındaki alan. Tam sayı olmayabilir.
+// "Request volume" from the test start up to the given moment: the area under the RPS curve. May not be a whole number.
 function requestVolumeAt(
   seconds: number,
   targetRps: number,
@@ -55,22 +55,22 @@ function requestVolumeAt(
   return total;
 }
 
-// Testin toplam istek sayısı
+// Total request count of the test
 function totalRequests(targetRps: number, durationSeconds: number, profile: LoadProfile): number {
   return Math.ceil(requestVolumeAt(durationSeconds, targetRps, durationSeconds, profile) - EPSILON);
 }
 
-// İstekler eşit aralıklarla gönderilir, İLKİ 0. ANDA: k. istek, istek miktarının k'ya ulaştığı anda gider.
-// (5 RPS → 0 · 0,2 · 0,4 · ... Her saniyeye tam 5 istek düşer.)
+// Requests are sent at equal intervals, the FIRST AT TIME 0: request k goes out when the request volume reaches k.
+// (5 RPS → 0 · 0.2 · 0.4 · ... Each second gets exactly 5 requests.)
 
-// Verilen ana kadar (o an dahil) gönderilmiş olması gereken istek sayısı. Zamanlayıcı kullanır.
+// Number of requests that should have been sent up to the given moment (inclusive). Used by the scheduler.
 function requestsDueBy(seconds: number, targetRps: number, durationSeconds: number, profile: LoadProfile): number {
   const total = totalRequests(targetRps, durationSeconds, profile);
   if (seconds >= durationSeconds) return total;
   return Math.min(total, Math.floor(requestVolumeAt(seconds, targetRps, durationSeconds, profile) + EPSILON) + 1);
 }
 
-// Verilen andan ÖNCE gönderilmiş olması gereken istek sayısı
+// Number of requests that should have been sent BEFORE the given moment
 function requestsBefore(seconds: number, targetRps: number, durationSeconds: number, profile: LoadProfile): number {
   if (seconds <= 0) return 0;
   const total = totalRequests(targetRps, durationSeconds, profile);
@@ -78,8 +78,8 @@ function requestsBefore(seconds: number, targetRps: number, durationSeconds: num
   return Math.min(total, Math.ceil(requestVolumeAt(seconds, targetRps, durationSeconds, profile) - EPSILON));
 }
 
-// İki an arasında ([from, to)) gönderilmesi gereken istek sayısı. Analiz, her saniyenin hedefini buradan alır
-// (zamanlayıcıyla aynı hesap: kademe saniyenin ortasında değişse de doğru).
+// Number of requests that should be sent between two moments ([from, to)). The analysis gets each second's target from here
+// (same calculation as the scheduler: correct even when a step changes mid-second).
 export function requestsBetween(
   from: number,
   to: number,
@@ -92,9 +92,9 @@ export function requestsBetween(
   );
 }
 
-// Not: Bu döngü test süresince bir CPU çekirdeğini meşgul eder.
-// Uyuyan (setTimeout tabanlı) bir sürüm denendi ancak Windows'ta ölçüm
-// doğruluğunu bozduğu ölçüldü (~52ms → ~70ms). Doğruluk tercih edildi.
+// Note: this loop keeps one CPU core busy for the duration of the test.
+// A sleeping (setTimeout-based) version was tried, but on Windows it was measured
+// to hurt measurement accuracy (~52ms → ~70ms). Accuracy was preferred.
 export function runScheduledLoop(
   targetRps: number,
   durationSeconds: number,
@@ -115,7 +115,7 @@ export function runScheduledLoop(
     function loop() {
       const nowMs = elapsedMs();
 
-      // Süre doldu: son anda kaçırılan istekleri de at, bitir
+      // Time's up: send any requests missed at the last moment, then finish
       if (nowMs >= durationMs) {
         while (ticksSoFar < total) {
           onTick();
@@ -125,7 +125,7 @@ export function runScheduledLoop(
         return;
       }
 
-      // Geride kaldıysak açığı hemen kapat (ilk istek 0. anda gider)
+      // If we've fallen behind, catch up immediately (the first request goes out at time 0)
       const expected = requestsDueBy(nowMs / 1000, targetRps, durationSeconds, profile);
 
       while (ticksSoFar < expected) {
@@ -133,7 +133,7 @@ export function runScheduledLoop(
         ticksSoFar++;
       }
 
-      // Event loop'a sıra ver (gelen cevaplar işlensin), sonra hemen tekrar kontrol et
+      // Yield to the event loop (so incoming responses get processed), then check again right away
       setImmediate(loop);
     }
 

@@ -1,16 +1,16 @@
-// Sıralama açılır menüsü. Seçenekler sabit sırada durur, seçili olan sarı ve ✓ ile işaretlenir.
-// Menünün dışına tıklayınca ya da Esc'ye basınca kapanır.
+// Sort dropdown menu. Options stay in a fixed order; the selected one is yellow and marked with ✓.
+// Closes when clicking outside the menu or pressing Esc.
 
 import { $ } from "../core/dom.js";
 import { t } from "../core/i18n.js";
 
-// Yeni seçenek eklemek için buraya bir satır eklemek yeterli (sunucu da o değeri tanımalı)
+// To add a new option, adding a line here is enough (the server must recognize that value too)
 const OPTIONS = [
     { value: "newest", label: "history.sort.optionNewest" },
     { value: "oldest", label: "history.sort.optionOldest" },
 ];
 
-// onChange(value): kullanıcı farklı bir seçenek seçince
+// onChange(value): when the user picks a different option
 export function createSortMenu({ onChange }) {
     const root = $("history-sort");
     const toggle = $("history-sort-toggle");
@@ -37,7 +37,7 @@ export function createSortMenu({ onChange }) {
                 "flex items-center gap-2 px-3 py-1.5 font-label-caps text-[11px] text-left whitespace-nowrap transition-colors " +
                 (selected ? "text-primary-container" : "text-on-surface-variant hover:bg-surface-variant hover:text-on-surface");
 
-            // Tik işareti sadece seçili olanda görünür, ama yer hep ayrılır (yazılar hizalı kalsın)
+            // The check mark only shows on the selected one, but its space is always reserved (so the text stays aligned)
             const check = document.createElement("span");
             check.className = `material-symbols-outlined text-[14px] ${selected ? "" : "invisible"}`;
             check.textContent = "check";
@@ -68,7 +68,7 @@ export function createSortMenu({ onChange }) {
         arrow.classList.remove("rotate-180");
     }
 
-    // Dışarıdan seçili değeri ayarla (sayfa adresinden okunan ya da yeni seçilen)
+    // Set the selected value from outside (read from the page URL or newly chosen)
     function setValue(value) {
         current = value;
         label.textContent = t("history.sort.label", { value: optionLabel(value) });

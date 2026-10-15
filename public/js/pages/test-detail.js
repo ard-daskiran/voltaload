@@ -1,7 +1,7 @@
 // test-detail.js
-// Test detay sayfası (/test.html?id=...): parçaları kurar ve testin verisini yükler.
-// Grafik, durum kodu kartı ve saniyelik toplama anasayfadakilerin aynısı.
-// Analiz, sayfanın geri kalanı göründükten sonra ayrıca yüklenir (bir sorun olursa sayfa etkilenmez).
+// Test detail page (/test.html?id=...): builds the parts and loads the test's data.
+// The chart, status code card and per-second aggregation are the same as on the home page.
+// The analysis loads separately after the rest of the page is visible (so a problem doesn't affect the page).
 
 import { $ } from "../core/dom.js";
 import { t, applyTranslations, getLocale, formatNumber } from "../core/i18n.js";
@@ -24,19 +24,19 @@ renderHeader();
 applyTranslations();
 attachHintsFromMarkup();
 
-// Hata ekranının iki hali
+// The two variants of the error screen
 const ERRORS = {
     notFound: { icon: "search_off", title: "detail.notFoundTitle", text: "detail.notFoundText" },
     loadError: { icon: "cloud_off", title: "detail.loadErrorTitle", text: "detail.loadErrorText" },
 };
 
-// Yönlendirme kodları: Volta bunları takip etmez, cevap olarak kaydeder
+// Redirect codes: Volta doesn't follow them, it records them as responses
 const REDIRECT_CODES = ["301", "302", "303", "307", "308"];
 const REDIRECT_WARNING_RATIO = 0.5;
 
 const testRunId = new URLSearchParams(window.location.search).get("id");
 
-// "← Geçmiş" bağlantıları listeyi kaldığın haliyle açsın
+// "← History" links open the list in the state you left it
 const returnUrl = getReturnUrl(testRunId);
 document.querySelectorAll("[data-history-link]").forEach((link) => (link.href = returnUrl));
 
@@ -56,7 +56,7 @@ const statusCard = createStatusCard({
     totalEl: $("status-total"),
 });
 
-// Biten her saniye: başarılı RPS noktası ve bilgi kutusundaki saniyelik sayılar
+// Every finished second: successful RPS point and the per-second counts in the tooltip
 const seconds = createSecondAggregator({
     onSecond: (endSecond, s) => {
         addSecondPoint(endSecond, {
@@ -69,7 +69,7 @@ const seconds = createSecondAggregator({
     },
 });
 
-// kind: "notFound" ya da "loadError"
+// kind: "notFound" or "loadError"
 function showError(kind) {
     const error = ERRORS[kind];
     $("detail-main").hidden = true;
@@ -79,7 +79,7 @@ function showError(kind) {
     $("detail-error-text").textContent = t(error.text);
 }
 
-// Cevapların en az yarısı yönlendirmeyse uyarı şeridini göster
+// Show the warning strip if at least half the responses are redirects
 function updateRedirectNotice(statusCounts, total) {
     const codes = Object.keys(statusCounts).filter((code) => REDIRECT_CODES.includes(code)).sort();
     const redirects = codes.reduce((sum, code) => sum + statusCounts[code], 0);
@@ -94,7 +94,7 @@ function updateRedirectNotice(statusCounts, total) {
     }
 }
 
-// Dilimleri canlı testteki gibi sırayla grafiğe ver
+// Feed the windows to the chart in order, like in a live test
 function drawChart(testRun, windows) {
     createChart(testRun.duration, testRun.loadProfile);
 
@@ -118,7 +118,7 @@ function drawChart(testRun, windows) {
     updateRedirectNotice(statusCounts, total);
 }
 
-// --- Analiz ---
+// --- Analysis ---
 
 async function loadAnalysis(testRun) {
     try {
@@ -134,9 +134,9 @@ async function loadAnalysis(testRun) {
     }
 }
 
-// --- Rapor ---
+// --- Report ---
 
-// Test bitmişse rapor butonu aktif, yeni sekmede rapor sayfasını açar
+// If the test has ended the report button is enabled and opens the report page in a new tab
 function setupReport(testRun) {
     const link = $("report-btn");
     const running = testRun.status === "RUNNING";
@@ -147,14 +147,14 @@ function setupReport(testRun) {
     link.title = running ? t("report.runningHint") : "";
 }
 
-// --- Test silme ---
+// --- Deleting the test ---
 
 function setupDelete(testRun) {
     const button = $("delete-btn");
     const running = testRun.status === "RUNNING";
 
     button.disabled = running;
-    // Butonda yazı yok, sadece simge: ne yaptığı ipucunda yazar
+    // The button has no text, only an icon: what it does is in the tooltip
     button.title = running ? t("deleteTest.runningHint") : t("deleteTest.button");
 
     button.addEventListener("click", async () => {
@@ -168,12 +168,12 @@ function setupDelete(testRun) {
             onConfirm: async () => {
                 const response = await fetch(`/api/test-run/${encodeURIComponent(testRun.id)}`, { method: "DELETE" });
                 if (response.status === 409) throw new Error(t("deleteTest.runningHint"));
-                // 404: zaten silinmiş, amaca ulaşılmış sayılır
+                // 404: already deleted, which counts as success
                 if (!response.ok && response.status !== 404) throw new Error(t("deleteTest.failed"));
             },
         });
 
-        // Silindiyse listeye, kaldığın yere dön. Bildirim liste açılınca gösterilir.
+        // If deleted, return to the list where you left off. The notification shows when the list opens.
         if (deleted) {
             queueToast(t("deleteTest.toast"), { detail: shortUrl(testRun.url), type: "danger" });
             window.location.href = returnUrl;
@@ -181,7 +181,7 @@ function setupDelete(testRun) {
     });
 }
 
-// --- Yükleme ---
+// --- Loading ---
 
 async function load() {
     if (!testRunId) {
@@ -215,7 +215,7 @@ async function load() {
         setupReport(testRun);
         $("running-notice").hidden = testRun.status !== "RUNNING";
 
-        // Sayfanın geri kalanı göründükten sonra
+        // After the rest of the page is visible
         loadAnalysis(testRun);
     } catch (err) {
         console.error(err);

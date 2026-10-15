@@ -1,14 +1,14 @@
-// Detay sayfasının dört metrik kartı ve özet kartı.
-// Değerler tüm testin özetinden gelir (sunucudaki TestRun kaydı).
-// p95 ve p99: başta grafikteki çizgi renginde, hafif ışıyan dikey çizgi; değer ve bilgi kutusu başlığı aynı renk.
-// Diğer satırlar beyaz (hata oranı, hata varsa kırmızı). Çizginin yeri boş kalır, yazılar hizalı durur.
-// Bilgi kutuları yukarı açılır (kart sayfanın en altında).
+// The detail page's four metric cards and the summary card.
+// Values come from the whole test's summary (the TestRun record on the server).
+// p95 and p99: a softly glowing vertical bar at the start in the chart line's color; the value and the info box title use the same color.
+// Other rows are white (error rate is red if there are errors). The bar's space stays empty so the text stays aligned.
+// Info boxes open upward (the card is at the very bottom of the page).
 
 import { $ } from "../core/dom.js";
 import { t, formatNumber, formatMs, formatPercent } from "../core/i18n.js";
 import { attachHint } from "../core/info-hint.js";
 
-// Renkler (grafikteki çizgilerle aynı)
+// Colors (same as the chart lines)
 const COLORS = {
     p95: "#64d8d7",
     p99: "#c4b5fd",
@@ -16,15 +16,15 @@ const COLORS = {
     neutral: "#e1e2eb",
 };
 
-// Bayt → okunaklı boyut (KB, MB, GB)
+// Bytes → readable size (KB, MB, GB)
 export function formatBytes(bytes) {
     if (bytes >= 1_000_000_000) return `${formatNumber(bytes / 1_000_000_000, 2)} GB`;
     if (bytes >= 1_000_000) return `${formatNumber(bytes / 1_000_000, 1)} MB`;
     return `${formatNumber(bytes / 1_000, 1)} KB`;
 }
 
-// color: değerin ve bilgi kutusu başlığının rengi (verilmezse beyaz)
-// bar: true ise başta bu renkte, hafif ışıyan dikey çizgi
+// color: color of the value and the info box title (white if not given)
+// bar: if true, a softly glowing vertical bar in this color at the start
 function summaryRow(label, value, hintKey, { color = COLORS.neutral, bar = false } = {}) {
     const row = document.createElement("div");
     row.className = "flex justify-between items-center gap-3 cursor-default";
@@ -32,7 +32,7 @@ function summaryRow(label, value, hintKey, { color = COLORS.neutral, bar = false
     const dt = document.createElement("dt");
     dt.className = "text-on-surface-variant whitespace-nowrap flex items-center gap-2.5";
 
-    // Çizgi yoksa da yeri ayrılır (yazılar hizalı kalsın)
+    // Space is reserved even without a bar (so the text stays aligned)
     const marker = document.createElement("span");
     marker.className = "inline-block w-0.5 h-4 rounded-full shrink-0";
     if (bar) {
@@ -55,7 +55,7 @@ export function createSummaryCards() {
     const list = $("summary-list");
     const empty = $("summary-empty");
 
-    // summary null ise test hiç ölçülebilen cevap almamış demektir
+    // If summary is null, the test got no measurable responses at all
     function show(summary) {
         if (!summary) {
             for (const id of ["m-avg", "m-count", "m-min", "m-max"]) $(id).textContent = "—";

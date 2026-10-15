@@ -1,4 +1,4 @@
-// Anasayfa: parçaları kurar ve birbirine bağlar. Kendisi hesap yapmaz.
+// Home page: builds the parts and wires them together. It doesn't do any calculations itself.
 
 import { $ } from "../core/dom.js";
 import { t, applyTranslations, onBeforeLanguageSwitch } from "../core/i18n.js";
@@ -20,10 +20,10 @@ renderHeader();
 applyTranslations();
 attachHintsFromMarkup();
 
-// --- Parçalar ---
+// --- Parts ---
 
 const form = createTestForm();
-// Dil değişince sayfa yenilenir: formda yazılmış değerler kaybolmasın
+// The page reloads when the language changes: don't lose the values typed into the form
 onBeforeLanguageSwitch(form.saveDraft);
 const targetBook = createTargetBook({ getCurrentUrl: form.getUrl, onSelect: form.setUrl });
 const saveSuggestion = createSaveSuggestion({ onSave: (url) => targetBook.open({ addUrl: url }) });
@@ -39,7 +39,7 @@ const statusCard = createStatusCard({
     totalEl: $("status-total"),
 });
 
-// Bir saniye dolunca: başarılı RPS noktası, "İstek" kartının anlık değeri, günlük satırı
+// When a second completes: successful RPS point, the "Requests" card's current value, log row
 const seconds = createSecondAggregator({
     onSecond: (endSecond, s) => {
         addSecondPoint(endSecond, {
@@ -54,12 +54,12 @@ const seconds = createSecondAggregator({
     },
 });
 
-// Çalışan (ya da en son çalışan) testin URL'si: test bitince kaydetme önerisi için
+// URL of the running (or most recently run) test: for the save suggestion when the test ends
 let currentTestUrl = null;
 
-// --- Akış ---
+// --- Flow ---
 
-// Yeni bir test için ekranı sıfırla
+// Reset the screen for a new test
 function prepareView(durationSeconds, profile) {
     createChart(durationSeconds, profile);
     metrics.reset();
@@ -69,7 +69,7 @@ function prepareView(durationSeconds, profile) {
     seconds.reset();
 }
 
-// Her yeni dilim (canlı akış ve yeniden bağlanma aynı yoldan geçer)
+// Every new window (the live stream and reconnection go through the same path)
 function handleWindow(d) {
     const x = addWindow(d);
     if (x === null) return;
@@ -92,7 +92,7 @@ const session = createTestSession({
     onWindow: handleWindow,
     onDone: (status) => {
         finishTest(status === "STOPPED" ? t("state.stopped") : t("state.completed"));
-        // Tamamlanan ya da durdurulan testten sonra: URL rehberde yoksa kaydetmeyi öner
+        // After a completed or stopped test: suggest saving the URL if it's not in the target book
         saveSuggestion.maybeSuggest(currentTestUrl);
     },
     onError: (message) => finishTest(t("state.error", { message }), true),
@@ -100,7 +100,7 @@ const session = createTestSession({
     onConnectionRestored: connectionOverlay.restored,
 });
 
-// --- Butonlar ---
+// --- Buttons ---
 
 form.onSubmit(async () => {
     const input = form.readPayload();
@@ -137,7 +137,7 @@ form.onStop(async () => {
 $("zoom-reset").addEventListener("click", resetChartZoom);
 $("target-book-btn").addEventListener("click", () => targetBook.open());
 
-// --- Başlangıç ---
+// --- Startup ---
 
 async function init() {
     initLegend();
@@ -157,7 +157,7 @@ async function init() {
     } else if (resumed === "finished") {
         finishTest(t("state.completed"));
     } else {
-        // Önce "yeniden çalıştır" ayarları, yoksa dil değişiminden kalan taslak
+        // "Run again" settings first, otherwise the draft left over from a language change
         form.applyRerunSettings() || form.restoreDraft();
     }
 }

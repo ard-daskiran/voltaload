@@ -1,5 +1,5 @@
-// Detay sayfasının analiz kartı: durum, küçük gösterge, tahmini kapasite, sonuç cümlesi, uyarılar, olaylar.
-// Öneriler ayrı bir pencerede (kartın sağ altındaki buton).
+// The detail page's analysis card: state, small gauge, estimated capacity, result sentence, warnings, events.
+// Recommendations are in a separate dialog (the button at the card's bottom right).
 
 import { $, el } from "../core/dom.js";
 import { t } from "../core/i18n.js";
@@ -15,7 +15,7 @@ import {
 
 
 
-// Küçük gösterge: dört renkli bölge, bulunulan bölge parlak ve altında ok
+// Small gauge: four colored zones; the current zone is bright with a pointer below it
 function gauge(state) {
     const wrap = el("div", "flex flex-col gap-0.5");
     const bar = el("div", "flex h-1.5 gap-0.5");
@@ -67,7 +67,7 @@ function eventsList(events) {
     return wrap;
 }
 
-// onOpenRecommendations(liste): "Öneriler" butonuna basınca
+// onOpenRecommendations(list): when the "Recommendations" button is clicked
 export function createAnalysisCard({ onOpenRecommendations }) {
     const content = $("analysis-content");
     const footer = $("analysis-footer");
@@ -77,7 +77,7 @@ export function createAnalysisCard({ onOpenRecommendations }) {
     let recommendations = [];
     recsBtn.addEventListener("click", () => onOpenRecommendations(recommendations));
 
-    // Tek satırlık mesaj (hazırlanıyor, yüklenemedi, veri yok)
+    // Single-line message (preparing, failed to load, no data)
     function message(key, isError = false) {
         content.replaceChildren(el("p", `font-data-md text-[13px] ${isError ? "text-signal-error" : "text-on-surface-variant"}`, t(key)));
         footer.hidden = true;
@@ -92,7 +92,7 @@ export function createAnalysisCard({ onOpenRecommendations }) {
         const color = HEALTH_COLORS[verdict.state];
         const nodes = [];
 
-        // Durum ve tahmini kapasite
+        // State and estimated capacity
         const head = el("div", "flex items-start justify-between gap-3");
 
         const chip = el("span", "flex items-center gap-2 font-label-caps text-label-caps uppercase");
@@ -112,10 +112,10 @@ export function createAnalysisCard({ onOpenRecommendations }) {
         head.append(chip, capacity);
         nodes.push(head, gauge(verdict.state));
 
-        // Sonuç cümlesi
+        // Result sentence
         nodes.push(el("p", "font-body-md text-[14px] leading-snug text-on-surface", verdictSentence(analysis, testRun.loadProfile === "STEPPED")));
 
-        // Uyarılar
+        // Warnings
         const recTypes = analysis.recommendations.map((r) => r.type);
         if (analysis.voltaOverloaded) nodes.push(warningRow(t("analysis.voltaOverloaded")));
         if (analysis.stopped) nodes.push(warningRow(t(`analysis.ended.${analysis.endReason}`)));
@@ -123,12 +123,12 @@ export function createAnalysisCard({ onOpenRecommendations }) {
         if (recTypes.includes("clientErrors")) nodes.push(warningRow(t("analysis.clientErrorsNotice")));
         if (recTypes.includes("rateLimited")) nodes.push(warningRow(t("analysis.rateLimitedNotice")));
 
-        // Olaylar
+        // Events
         if (analysis.events.length > 0) nodes.push(eventsList(analysis.events));
 
         content.replaceChildren(...nodes);
 
-        // Öneriler butonu
+        // Recommendations button
         recommendations = analysis.recommendations;
         recsBtn.hidden = recommendations.length === 0;
         recsLabel.textContent = t("analysis.recommendations", { count: recommendations.length });

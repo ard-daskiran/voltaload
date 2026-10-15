@@ -1,17 +1,17 @@
-// "Yeniden çalıştır" ve önerilerdeki "Bu testi çalıştır" için:
-// ayarlar bir sayfada bırakılır, anasayfadaki form bir kez okuyup siler.
+// For "Run again" and "Run this test" in the recommendations:
+// the settings are left by one page; the form on the home page reads them once and deletes them.
 
 const RERUN_STORAGE_KEY = "volta-rerun";
 
-// Ayarları bırak, anasayfaya git (form bu ayarlarla dolar)
+// Leave the settings, go to the home page (the form fills with these settings)
 // settings: { url, method, body, targetRps, duration, loadProfile, stepCount }
 export function rerunWith(settings) {
     sessionStorage.setItem(RERUN_STORAGE_KEY, JSON.stringify(settings));
     window.location.href = "/";
 }
 
-// Bırakılan ayarları al ve sil (bir kez kullanılsın, sayfa yenilenince form tekrar dolmasın).
-// Ayar yoksa ya da okunamıyorsa null döner.
+// Take the left settings and delete them (used once, so the form doesn't refill on page reload).
+// Returns null if there are no settings or they can't be read.
 export function takeRerunSettings() {
     const raw = sessionStorage.getItem(RERUN_STORAGE_KEY);
     if (!raw) return null;
@@ -21,7 +21,7 @@ export function takeRerunSettings() {
     try {
         return JSON.parse(raw);
     } catch (err) {
-        console.error("Yeniden çalıştırma ayarları okunamadı:", err);
+        console.error("Could not read the rerun settings:", err);
         return null;
     }
 }

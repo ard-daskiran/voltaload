@@ -1,6 +1,6 @@
-// URL rehberi penceresi: kayıtlı hedefleri listeler, arar, ekler, siler.
-// Satıra tıklayınca URL forma yazılır ve pencere kapanır.
-// Kayıtlar az olacağı için hepsi bir kez çekilir, arama tarayıcıda anında yapılır.
+// Target book dialog: lists, searches, adds and deletes saved targets.
+// Clicking a row writes the URL into the form and closes the dialog.
+// Since there will be few entries, they're all fetched once and search runs instantly in the browser.
 
 import { t } from "../core/i18n.js";
 import { confirmDialog } from "../core/confirm-dialog.js";
@@ -22,14 +22,14 @@ const INPUT_CLASS =
     "w-full bg-surface-container-lowest border border-border-subtle rounded py-2 px-3 font-data-md text-data-md text-on-surface " +
     "focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container placeholder:text-on-surface-variant/50";
 
-// getCurrentUrl: formdaki URL (yeni kayıt formunu doldurmak için)
-// onSelect(url): bir kayıt seçilince
+// getCurrentUrl: the URL in the form (to prefill the new entry form)
+// onSelect(url): when an entry is selected
 export function createTargetBook({ getCurrentUrl, onSelect }) {
     let overlay = null;
     let refs = null;
     let targets = [];
 
-    // --- Pencerenin kurulması ---
+    // --- Building the dialog ---
 
     function build() {
         const root = el("div", "fixed inset-0 z-[60] flex items-start justify-center p-4 pt-24 bg-background/80 backdrop-blur-sm");
@@ -41,7 +41,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         box.setAttribute("role", "dialog");
         box.setAttribute("aria-modal", "true");
 
-        // Başlık
+        // Title
         const header = el("div", "flex items-center justify-between px-5 py-4 border-b border-border-subtle bg-surface-container-low/70");
         const title = el("div", "flex items-center gap-2");
         title.append(icon("contacts", "text-[20px] text-primary-container"), el("h2", "font-headline-md text-headline-md text-on-surface", t("book.title")));
@@ -52,7 +52,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         closeBtn.append(icon("close", "text-[20px]"));
         header.append(title, closeBtn);
 
-        // Arama ve "+"
+        // Search and "+"
         const toolbar = el("div", "flex gap-2 px-5 pt-4");
         const searchWrap = el("div", "relative flex-1");
         const searchIcon = icon("search", "text-[18px] text-on-surface-variant");
@@ -72,7 +72,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         addBtn.append(icon("add", "text-[20px]"));
         toolbar.append(searchWrap, addBtn);
 
-        // Yeni kayıt formu ("+" ile açılır)
+        // New entry form (opened with "+")
         const form = el("div", "mx-5 mt-3 border border-border-subtle bg-surface-container-low rounded p-3 flex flex-col gap-3");
         form.hidden = true;
 
@@ -111,7 +111,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
 
         form.append(nameLabel, urlLabel, formError, formActions);
 
-        // Liste
+        // List
         const list = el("div", "px-5 py-4 max-h-80 overflow-y-auto flex flex-col");
 
         box.append(header, toolbar, form, list);
@@ -119,10 +119,10 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
 
         refs = { root, box, closeBtn, search, addBtn, form, nameInput, urlInput, formError, cancelBtn, saveBtn, list };
 
-        // Olaylar
+        // Events
         closeBtn.addEventListener("click", close);
-        // Sadece dışarıda basılıp dışarıda bırakılırsa kapat
-        // (kutunun içinde yazı seçerken fare dışarı kayınca kapanmasın)
+        // Close only if pressed and released outside
+        // (so it doesn't close when the mouse slips outside while selecting text in the box)
         let pressedOnBackdrop = false;
         root.addEventListener("mousedown", (e) => {
             pressedOnBackdrop = e.target === root;
@@ -143,7 +143,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         return root;
     }
 
-    // --- Liste ---
+    // --- List ---
 
     function message(text, isError = false) {
         refs.list.replaceChildren(el("p", `py-6 text-center font-data-md text-[13px] ${isError ? "text-signal-error" : "text-on-surface-variant"}`, text));
@@ -156,7 +156,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
             const response = await fetch("/api/targets");
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             targets = await response.json();
-            // Pencere bu arada kapatıldıysa çizecek yer yok
+            // If the dialog was closed in the meantime, there's nowhere to render
             if (refs) renderList();
         } catch (err) {
             console.error(err);
@@ -206,9 +206,9 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         refs.list.replaceChildren(...filtered.map(row));
     }
 
-    // --- Yeni kayıt ---
+    // --- New entry ---
 
-    // prefillUrl: verilirse URL alanı bununla dolar (öneriden gelindiğinde)
+    // prefillUrl: if given, the URL field is filled with it (when coming from the suggestion)
     function toggleForm(show, prefillUrl) {
         refs.form.hidden = !show;
         refs.formError.hidden = true;
@@ -229,7 +229,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         refs.saveBtn.disabled = true;
         refs.saveBtn.textContent = t("book.saving");
 
-        // Test formundaki gibi: protokol yazılmadıysa "http://"
+        // Same as the test form: "http://" if no protocol was typed
         const url = withDefaultScheme(refs.urlInput.value);
         refs.urlInput.value = url;
 
@@ -249,7 +249,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
                 return;
             }
 
-            // Kayıt yapıldı: pencere bu arada kapatılsa da kullanıcıya haber ver
+            // Saved: let the user know even if the dialog was closed in the meantime
             showToast(t("book.saved", { name: data.name }), { detail: shortUrl(data.url) });
             if (refs) {
                 toggleForm(false);
@@ -269,7 +269,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         }
     }
 
-    // --- Silme ---
+    // --- Deleting ---
 
     async function remove(target) {
         const deleted = await confirmDialog({
@@ -280,7 +280,7 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
             busyLabel: t("book.deleteBusy"),
             onConfirm: async () => {
                 const response = await fetch(`/api/targets/${target.id}`, { method: "DELETE" });
-                // 404: zaten silinmiş, amaca ulaşılmış sayılır
+                // 404: already deleted, which counts as success
                 if (!response.ok && response.status !== 404) throw new Error(t("book.deleteFailed"));
             },
         });
@@ -291,14 +291,14 @@ export function createTargetBook({ getCurrentUrl, onSelect }) {
         }
     }
 
-    // --- Açma / kapama ---
+    // --- Open / close ---
 
-    // Esc: sadece rehber penceresi odaktayken kapat (üstünde onay penceresi açıksa ona bırak)
+    // Esc: close only while the target book dialog has focus (if a confirmation dialog is open on top, leave it to that)
     function onKey(e) {
         if (e.key === "Escape" && overlay && overlay.contains(document.activeElement)) close();
     }
 
-    // addUrl: verilirse pencere ekleme formu açık ve bu URL dolu olarak açılır
+    // addUrl: if given, the dialog opens with the add form open and this URL filled in
     function open({ addUrl } = {}) {
         if (overlay) return;
         overlay = build();

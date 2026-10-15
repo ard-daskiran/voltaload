@@ -4,8 +4,8 @@ import os from "node:os";
 import { VOLTA_PORT, CONNECT_CHECK_TIMEOUT_MS } from "../config.js";
 import { apiError, type ApiError } from "../errors.js";
 
-// --- İzin verilen adres aralıkları ---
-// İsmi BlockList olsa da burada izin listesi olarak kullanıyoruz.
+// --- Allowed address ranges ---
+// Despite the name BlockList, we use it as an allow list here.
 
 const loopbackRanges = new net.BlockList();
 loopbackRanges.addSubnet("127.0.0.0", 8, "ipv4");
@@ -19,10 +19,10 @@ allowedRanges.addSubnet("192.168.0.0", 16, "ipv4");
 allowedRanges.addAddress("::1", "ipv6");
 allowedRanges.addSubnet("fc00::", 7, "ipv6");
 
-// --- Tipler ---
+// --- Types ---
 
 interface ResolvedTarget {
-  address: string; // Bağlanılacak, onaylanmış IP (worker sadece buna bağlanır)
+  address: string; // Approved IP to connect to (the worker connects only to this)
   family: 4 | 6;
 }
 
@@ -39,12 +39,12 @@ export type LocalUrlResult =
   | { ok: true; hostname: string; port: number; candidates: Candidate[] }
   | { ok: false; error: ApiError };
 
-// --- Yardımcılar ---
+// --- Helpers ---
 
-// IPv6 içine gömülü IPv4 adreslerini sade IPv4'e çevirir. İki yazımı da tanır:
-//   "::ffff:172.20.10.4" (noktalı; DNS cevaplarında görülür)
-//   "::ffff:ac14:a04"    (onaltılık; URL'den gelen adres her zaman bu biçimde, ayrıştırıcı çeviriyor)
-// Böylece adres kuralları ve "Volta'nın kendi adresi" kontrolü her iki yazımda aynı sonucu verir.
+// Converts IPv4 addresses embedded in IPv6 to plain IPv4. Recognizes both notations:
+//   "::ffff:172.20.10.4" (dotted; seen in DNS answers)
+//   "::ffff:ac14:a04"    (hex; an address from a URL is always in this form, the parser converts it)
+// This way the address rules and the "Volta's own address" check give the same result for both notations.
 function normalizeAddress(address: string, family: number): Candidate {
   const dotted = address.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
   if (dotted) return { address: dotted[1], family: 4 };
@@ -64,7 +64,7 @@ function isAllowedAddress(address: string, family: 4 | 6): boolean {
   return allowedRanges.check(address, family === 6 ? "ipv6" : "ipv4");
 }
 
-// Bu bilgisayarın kendi adresi mi? (loopback ya da ağ kartlarından biri)
+// Is it this computer's own address? (loopback or one of the network interfaces)
 function isOwnAddress(address: string, family: 4 | 6): boolean {
   if (loopbackRanges.check(address, family === 6 ? "ipv6" : "ipv4")) return true;
 
@@ -77,7 +77,7 @@ function isOwnAddress(address: string, family: 4 | 6): boolean {
   return false;
 }
 
-// Adrese ve porta TCP bağlantısı kurulabiliyor mu? (HTTP isteği göndermez)
+// Can a TCP connection be opened to the address and port? (doesn't send an HTTP request)
 function canConnect(address: string, family: 4 | 6, port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = net.connect({ host: address, port, family });
@@ -94,12 +94,12 @@ function canConnect(address: string, family: 4 | 6, port: number): Promise<boole
   });
 }
 
-// --- Adres kontrolü (bağlantı denemesi yok) ---
-// URL geçerli mi, bütün adresleri yerel mi, Volta'nın kendisi mi?
-// Hedef o an çalışmıyor olsa da sonuç verir. URL rehberi kayıt sırasında bunu kullanır.
+// --- Address check (no connection attempt) ---
+// Is the URL valid, are all its addresses local, is it Volta itself?
+// Gives a result even if the target isn't running right now. The target book uses this when saving.
 
 export async function checkLocalUrl(rawUrl: string): Promise<LocalUrlResult> {
-  // 1. URL geçerli mi?
+  // 1. Is the URL valid?
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
@@ -111,7 +111,7 @@ export async function checkLocalUrl(rawUrl: string): Promise<LocalUrlResult> {
     return { ok: false, error: apiError("URL_PROTOCOL") };
   }
 
-  // IPv6 adreslerinde URL köşeli parantez içerir: [::1]
+  // For IPv6 addresses the URL contains square brackets: [::1]
   const hostname = parsed.hostname.replace(/^\[|\]$/g, "");
   const port = parsed.port ? Number(parsed.port) : parsed.protocol === "https:" ? 443 : 80;
 
@@ -119,7 +119,7 @@ export async function checkLocalUrl(rawUrl: string): Promise<LocalUrlResult> {
     return { ok: false, error: apiError("URL_UNSPECIFIED") };
   }
 
-  // 2. Adres(ler)i çöz
+  // 2. Resolve the address(es)
   let candidates: Candidate[];
 
   if (net.isIP(hostname)) {
@@ -137,13 +137,13 @@ export async function checkLocalUrl(rawUrl: string): Promise<LocalUrlResult> {
     return { ok: false, error: apiError("DNS_FAILED") };
   }
 
-  // 3. Bütün adresler yerel olmalı
+  // 3. All addresses must be local
   const allAllowed = candidates.every((c) => isAllowedAddress(c.address, c.family));
   if (!allAllowed) {
     return { ok: false, error: apiError("NOT_LOCAL") };
   }
 
-  // 4. Volta'nın kendisine test atılamaz
+  // 4. Volta can't test itself
   if (port === VOLTA_PORT && candidates.some((c) => isOwnAddress(c.address, c.family))) {
     return { ok: false, error: apiError("SELF_TARGET") };
   }
@@ -151,14 +151,14 @@ export async function checkLocalUrl(rawUrl: string): Promise<LocalUrlResult> {
   return { ok: true, hostname, port, candidates };
 }
 
-// --- Test başlatma kontrolü ---
-// Adres kontrolü + hedefe gerçekten bağlanılabiliyor mu? Bağlanılabilen ilk adresi seçer.
+// --- Test start check ---
+// Address check + can we actually connect to the target? Picks the first address that connects.
 
 export async function resolveTarget(rawUrl: string): Promise<SecurityResult> {
   const check = await checkLocalUrl(rawUrl);
   if (!check.ok) return check;
 
-  // 5. Bağlanılabilen ilk adresi seç (localhost hem IPv4 hem IPv6'ya çözülebilir)
+  // 5. Pick the first address that connects (localhost may resolve to both IPv4 and IPv6)
   for (const candidate of check.candidates) {
     if (await canConnect(candidate.address, candidate.family, check.port)) {
       return { ok: true, target: { address: candidate.address, family: candidate.family } };

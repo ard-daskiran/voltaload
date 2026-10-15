@@ -1,12 +1,12 @@
-// Sayfa öğeleriyle çalışmak için küçük yardımcılar.
+// Small helpers for working with page elements.
 
-// Kimliğe göre öğe bul
+// Find an element by ID
 export function $(id) {
     return document.getElementById(id);
 }
 
-// Sınıfı ve (isteğe bağlı) metni verilmiş bir öğe oluştur: el("div", "flex gap-2", "Merhaba")
-// textContent kullanır: metin HTML olarak yorumlanmaz, içine kod yazılsa bile çalışmaz.
+// Create an element with the given class and (optional) text: el("div", "flex gap-2", "Hello")
+// Uses textContent: the text isn't parsed as HTML, so even code written into it won't run.
 export function el(tag, className = "", text) {
     const node = document.createElement(tag);
     node.className = className;
@@ -14,7 +14,7 @@ export function el(tag, className = "", text) {
     return node;
 }
 
-// Metni ve sınıfı verilmiş bir <span>
+// A <span> with the given text and class
 export function createSpan(text, className = "") {
     return el("span", className, text);
 }

@@ -1,9 +1,9 @@
-// API hataları: bir kod (arayüz bunu kullanıcının dilinde gösterir), gerekirse değişkenler
-// ve İngilizce yedek metin (kodu tanımayanlar için, örneğin terminalden curl ile deneyenler).
-// Cevap gövdesi: { error: "İngilizce metin", code: "KOD", params: { ... } }
+// API errors: a code (the UI shows it in the user's language), variables if needed
+// and an English fallback text (for clients that don't know the code, e.g. someone trying with curl from a terminal).
+// Response body: { error: "English text", code: "CODE", params: { ... } }
 
 export type ErrorCode =
-  // Test başlatma doğrulaması
+  // Test start validation
   | "INVALID_URL"
   | "INVALID_METHOD"
   | "INVALID_RPS"
@@ -12,7 +12,7 @@ export type ErrorCode =
   | "INVALID_STEP_COUNT"
   | "STEP_TOO_SHORT"
   | "STEP_RPS_TOO_LOW"
-  // Hedef adres
+  // Target address
   | "URL_MALFORMED"
   | "URL_PROTOCOL"
   | "URL_UNSPECIFIED"
@@ -20,7 +20,7 @@ export type ErrorCode =
   | "NOT_LOCAL"
   | "SELF_TARGET"
   | "TARGET_UNREACHABLE"
-  // Test yönetimi
+  // Test management
   | "TEST_ALREADY_RUNNING"
   | "START_FAILED"
   | "NO_ACTIVE_TEST"
@@ -28,7 +28,7 @@ export type ErrorCode =
   | "TEST_RUNNING"
   | "TEST_UNEXPECTED_ERROR"
   | "WORKER_EXITED"
-  // URL rehberi
+  // Target book
   | "TARGET_NAME_LENGTH"
   | "TARGET_URL_EXISTS"
   | "TARGET_NAME_EXISTS"
@@ -36,18 +36,18 @@ export type ErrorCode =
   | "URL_REQUIRED"
   | "INVALID_ID"
   | "TARGET_NOT_FOUND"
-  // Genel (gövde okunamadı, adres yok, beklenmeyen hata)
+  // General (body unreadable, no such endpoint, unexpected error)
   | "BODY_TOO_LARGE"
   | "INVALID_JSON"
   | "API_NOT_FOUND"
   | "INTERNAL_ERROR"
-  // Güvenlik (istek Volta'nın kendi adresinden gelmiyor)
+  // Security (request doesn't come from Volta's own address)
   | "FORBIDDEN_HOST"
   | "FORBIDDEN_ORIGIN";
 
 type Params = Record<string, string | number>;
 
-// İngilizce yedek metinler (arayüzdeki Türkçe ve İngilizce metinler sözlükte: public/js/core/i18n.js)
+// English fallback texts (the UI's Turkish and English texts are in the dictionary: public/js/core/i18n.js)
 const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   INVALID_URL: () => "A valid URL is required.",
   INVALID_METHOD: () => "Method must be GET or POST.",
@@ -96,7 +96,7 @@ export function apiError(code: ErrorCode, params: Params = {}): ApiError {
   return { code, params, message: MESSAGES[code](params) };
 }
 
-// Cevap gövdesi (HTTP cevapları ve Socket.io "error" mesajı aynı biçimi kullanır)
+// Response body (HTTP responses and the Socket.io "error" message use the same shape)
 export function errorBody(error: ApiError) {
   return { error: error.message, code: error.code, params: error.params };
 }

@@ -1,5 +1,5 @@
-// Test silme ve veritabanı temizleme. Çalışan bir teste dokunulmaz.
-// Sadece TestRun ve TestResult tabloları etkilenir (URL rehberi ayrı tabloda, ona dokunulmaz).
+// Test deletion and database clearing. A running test is never touched.
+// Only the TestRun and TestResult tables are affected (the target book is in a separate table and isn't touched).
 
 import { prisma } from "../db/prisma.js";
 import { getActiveTestRun } from "../engine/testRunManager.js";
@@ -8,7 +8,7 @@ function isRunning(id: string, status: string): boolean {
   return status === "RUNNING" || getActiveTestRun()?.testRunId === id;
 }
 
-// Tek bir testi ve sonuçlarını sil. Ya ikisi birden silinir ya hiçbiri.
+// Delete a single test and its results. Either both are deleted or neither.
 export async function deleteTestRun(id: string): Promise<{ ok: true } | { ok: false; reason: "notFound" | "running" }> {
   const run = await prisma.testRun.findUnique({ where: { id }, select: { id: true, status: true } });
   if (!run) return { ok: false, reason: "notFound" };
@@ -22,7 +22,7 @@ export async function deleteTestRun(id: string): Promise<{ ok: true } | { ok: fa
   return { ok: true };
 }
 
-// Tüm testleri ve sonuçlarını sil, sonra veritabanı dosyasını küçült.
+// Delete all tests and their results, then shrink the database file.
 export async function clearAllTestRuns(): Promise<
   { ok: true; deletedRuns: number; deletedResults: number } | { ok: false; reason: "running" }
 > {
@@ -33,15 +33,15 @@ export async function clearAllTestRuns(): Promise<
     prisma.testRun.deleteMany({}),
   ]);
 
-  // SQLite silinen kayıtların yerini dosyada boş tutar. VACUUM dosyayı gerçekten küçültür.
-  // Başarısız olursa veriler yine de silinmiştir, sadece dosya küçülmemiştir.
+  // SQLite keeps the space of deleted rows empty in the file. VACUUM actually shrinks the file.
+  // If it fails, the data is still deleted; only the file hasn't shrunk.
   try {
     await prisma.$executeRawUnsafe("VACUUM");
-    // WAL modunda değişiklikler önce dev.db-wal'a yazılır ve o dosya kendiliğinden küçülmez:
-    // ana dosyaya aktarıp sıfırla, yoksa temizlemeden sonra klasörde yine onlarca MB'lık bir dosya kalır
+    // In WAL mode changes are first written to dev.db-wal and that file doesn't shrink on its own:
+    // move them into the main file and reset it, otherwise a file of tens of MB stays in the folder after clearing
     await prisma.$queryRawUnsafe("PRAGMA wal_checkpoint(TRUNCATE);");
   } catch (err) {
-    console.error("Veritabanı dosyası küçültülemedi:", err);
+    console.error("Could not shrink the database file:", err);
   }
 
   return { ok: true, deletedRuns: runs.count, deletedResults: results.count };

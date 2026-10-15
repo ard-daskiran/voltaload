@@ -1,5 +1,5 @@
 // history-table.js
-// Geçmiş tablosunun satırları.
+// Rows of the history table.
 
 import { t, formatNumber, formatMs, getLocale } from "../core/i18n.js";
 import { runStatusStyle, runStatusLabel } from "../status/run-status.js";
@@ -10,7 +10,7 @@ import { shortUrl } from "../core/url.js";
 
 const COLUMN_COUNT = 7;
 
-// Ortalama gecikme rengi (sınırlar core/latency.js'te): normal cyan, yavaş sarı, kritik kırmızı
+// Average latency color (limits in core/latency.js): normal cyan, slow yellow, critical red
 const LATENCY_CLASSES = {
     none: "text-on-surface-variant",
     normal: "text-secondary",
@@ -36,8 +36,8 @@ function dateCell(iso) {
     );
 }
 
-// Hedef: rehberde kayıtlıysa üstte isim, altında küçük URL. Değilse sadece URL.
-// Kopyalama her zaman URL'yi kopyalar ve satırın tıklamasını tetiklemez (detay sayfası açılmaz).
+// Target: if saved in the target book, the name on top and a small URL below. Otherwise just the URL.
+// Copy always copies the URL and doesn't trigger the row's click (the detail page doesn't open).
 function urlCell(run) {
     const wrap = el("div", "flex items-center gap-2 max-w-[360px]");
 
@@ -65,7 +65,7 @@ function urlCell(run) {
             icon.textContent = "check";
             setTimeout(() => (icon.textContent = "content_copy"), 1500);
         } catch (err) {
-            console.error("Kopyalanamadı:", err);
+            console.error("Could not copy:", err);
         }
     });
 
@@ -119,7 +119,7 @@ function statusCell(status) {
 }
 
 export function createHistoryTable(tbody) {
-    // Tek satırlık mesaj (yükleniyor, boş, hata)
+    // Single-line message (loading, empty, error)
     function showMessage(text, isError = false) {
         const cell = el("td", `py-8 px-4 text-center ${isError ? "text-signal-error" : "text-on-surface-variant"}`, text);
         cell.colSpan = COLUMN_COUNT;
@@ -128,7 +128,7 @@ export function createHistoryTable(tbody) {
         tbody.replaceChildren(row);
     }
 
-    // onOpen(run, event): satıra tıklanınca
+    // onOpen(run, event): when a row is clicked
     function render(items, onOpen) {
         const rows = items.map((run) => {
             const tr = el("tr", "group hover:bg-secondary/10 transition-colors cursor-pointer");

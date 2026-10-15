@@ -1,8 +1,8 @@
-# Bütün metin dosyaları depoda LF satır sonuyla saklanır.
-# Windows'ta çalışırken Git uyarı vermez, projeyi Mac/Linux'ta açan da sorun yaşamaz.
+# All text files are stored in the repo with LF line endings.
+# Git won't warn when working on Windows, and opening the project on Mac/Linux causes no issues either.
 * text=auto eol=lf
 
-# İkili dosyalar: Git içeriklerine dokunmasın
+# Binary files: Git must not touch their contents
 *.png binary
 *.jpg binary
 *.ico binary

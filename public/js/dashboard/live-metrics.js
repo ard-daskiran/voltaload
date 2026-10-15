@@ -1,4 +1,4 @@
-// Metrik kartları: ortalama, istek, en düşük, en yüksek. Toplamlar ve durum kodu sayıları burada tutulur.
+// Metric cards: average, requests, min, max. Totals and status code counts are kept here.
 
 import { $ } from "../core/dom.js";
 import { formatNumber } from "../core/i18n.js";
@@ -26,9 +26,9 @@ export function createLiveMetrics() {
         }
     }
 
-    // Her yeni dilimde çağrılır
+    // Called on every new window
     function addWindow(d) {
-        // Boş dilim: kartlardaki son değerler kalsın ("—" ile titremesin)
+        // Empty window: keep the last values on the cards (so they don't flicker to "—")
         if (d.requestCount === 0) return;
 
         totals.requests += d.requestCount;
@@ -38,7 +38,7 @@ export function createLiveMetrics() {
         }
 
         if (d.latencyCount > 0) {
-            // Ağırlıklı ortalama: kalabalık dilimler ortalamaya daha çok etki eder
+            // Weighted average: busier windows affect the average more
             totals.latencySum += d.avgResponseTime * d.latencyCount;
             totals.latencyCount += d.latencyCount;
             totals.min = totals.min === null ? d.minResponseTime : Math.min(totals.min, d.minResponseTime);
@@ -51,7 +51,7 @@ export function createLiveMetrics() {
             mMinLive.textContent = formatNumber(d.minResponseTime);
             mMaxLive.textContent = formatNumber(d.maxResponseTime);
         } else {
-            // Sadece bağlantı hatası olan dilim: gecikme ölçülemedi
+            // Window with only connection errors: latency couldn't be measured
             mAvgLive.textContent = "—";
             mMinLive.textContent = "—";
             mMaxLive.textContent = "—";
@@ -60,7 +60,7 @@ export function createLiveMetrics() {
         mCount.textContent = formatNumber(totals.requests);
     }
 
-    // "İstek" kartının anlık değeri: son biten saniyedeki istek sayısı
+    // Current value of the "Requests" card: the request count of the last finished second
     function setLiveRequests(count) {
         mCountLive.textContent = formatNumber(count);
     }

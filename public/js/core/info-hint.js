@@ -1,18 +1,18 @@
-// Bilgi kutusu: bir etiketin yanına soluk "?" simgesi koyar, üzerine gelince açıklama açılır.
-// Metinler sözlükten gelir: hint.<anahtar>.text (açıklama), hint.<anahtar>.graph (grafikte karşılığı, isteğe bağlı)
-// Başlık, ait olduğu kartın ya da değerin renginde gösterilir.
+// Info box: puts a faint "?" icon next to a label; hovering opens an explanation.
+// Texts come from the dictionary: hint.<key>.text (explanation), hint.<key>.graph (its counterpart on the chart, optional)
+// The title is shown in the color of the card or value it belongs to.
 
 import { t } from "./i18n.js";
 
 const DEFAULT_TITLE_COLOR = "#e1e2eb";
 
-// container: üzerine gelinince kutunun açılacağı öğe (kart ya da satır)
-// labelEl: yanına "?" simgesi konacak etiket
-// titleColor: kutunun başlık rengi (kartın ya da değerin rengi)
-// position: "below" (altında açılır) ya da "above" (üstünde açılır)
-// align: "left" ya da "right" (ekranın sağ kenarındaki öğeler için)
+// container: element that opens the box on hover (card or row)
+// labelEl: label to put the "?" icon next to
+// titleColor: the box's title color (the card's or value's color)
+// position: "below" (opens below) or "above" (opens above)
+// align: "left" or "right" (for elements at the right edge of the screen)
 export function attachHint({ container, labelEl, hintKey, titleColor = DEFAULT_TITLE_COLOR, position = "below", align = "left" }) {
-    // Kutu kart dışına taşabilsin diye overflow-hidden kaldırılır
+    // overflow-hidden is removed so the box can extend outside the card
     container.classList.add("group", "relative");
     container.classList.remove("overflow-hidden");
 
@@ -40,7 +40,7 @@ export function attachHint({ container, labelEl, hintKey, titleColor = DEFAULT_T
 
     box.append(title, text);
 
-    // Grafikte karşılığı varsa ayrı satırda
+    // Its counterpart on the chart, if any, on a separate line
     const graphKey = `hint.${hintKey}.graph`;
     const graph = t(graphKey);
     if (graph !== graphKey) {
@@ -53,10 +53,10 @@ export function attachHint({ container, labelEl, hintKey, titleColor = DEFAULT_T
     container.append(box);
 }
 
-// HTML'de işaretlenmiş öğelere bilgi kutusu ekle:
+// Add info boxes to elements marked in HTML:
 //   <div data-hint="avg" data-hint-color="#f4c21a" [data-hint-align="right"] [data-hint-position="above"]>
 //     <span data-hint-label>ORTALAMA</span> ...
-// applyTranslations'tan SONRA çağrılmalı (başlık, etiketin çevrilmiş metninden alınır).
+// Must be called AFTER applyTranslations (the title is taken from the label's translated text).
 export function attachHintsFromMarkup(root = document) {
     root.querySelectorAll("[data-hint]").forEach((container) => {
         attachHint({

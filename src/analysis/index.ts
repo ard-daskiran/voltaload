@@ -1,5 +1,5 @@
-// Analizin giriş noktası: testin ham sonuçlarını okur, kuralları sırayla uygular.
-// Sonuç cümle değil veridir; cümleleri arayüz sözlükten kurar.
+// Entry point of the analysis: reads the test's raw results and applies the rules in order.
+// The result is data, not sentences; the UI builds the sentences from the dictionary.
 
 import { prisma } from "../db/prisma.js";
 import { profileOf } from "../services/testRunFormat.js";
@@ -13,7 +13,7 @@ import { buildEvents, type AnalysisEvent, type EndEventType } from "./events.js"
 import { buildVerdict, type Outage } from "./verdict.js";
 import { buildRecommendations } from "./recommendations.js";
 
-// Testin nasıl bittiği → olay listesinin son satırı
+// How the test ended → the last row of the event list
 const END_EVENTS: Record<string, EndEventType> = {
   COMPLETED: "end",
   STOPPED: "stopped",
@@ -21,12 +21,12 @@ const END_EVENTS: Record<string, EndEventType> = {
   FAILED: "failed",
 };
 
-// Durdurulan testin son saniyesinin en az bu kadarı test içindeyse analize girer.
-// Daha azı (örneğin 10,05'te durdurmada 0,05 sn) birkaç istekten ibaret, sonuçları bozar.
+// The last second of a stopped test is analyzed if at least this much of it is within the test.
+// Less than that (e.g. 0.05 s when stopped at 10.05) is just a few requests and skews the results.
 const MIN_PARTIAL_SECOND = 0.5;
 
-// Bağlantı koptuysa ve öncesinde sunucu sağlıklıysa: kesinti.
-// Kapasite yine temkinli kalır, sadece cümle "o ana kadar karşıladı, sonra koptu" der.
+// If the connection was lost and the server was healthy before that: an outage.
+// Capacity stays conservative; only the sentence says "it handled the load until then, then the connection was lost".
 function findOutage(seconds: SecondStats[], events: AnalysisEvent[], baseline: Baseline): Outage | null {
   const lost = events.find((e) => e.type === "connectionLost");
   if (!lost) return null;
@@ -38,14 +38,14 @@ function findOutage(seconds: SecondStats[], events: AnalysisEvent[], baseline: B
   return { second: lost.second, rps: Math.round(Math.max(...before.map((s) => s.targetRps))) };
 }
 
-// İlk gönderilen isteğin anı (başlangıç kaydı olmayan eski testler için)
+// Send time of the first request (for old tests without a recorded start time)
 function firstSentAt(rows: ResultRow[]): number {
   let first = Infinity;
   for (const row of rows) first = Math.min(first, row.timestamp.getTime() - row.responseTime);
   return first;
 }
 
-// En son gönderilen isteğin anı (yarıda kalan testte kesin durma anı kayıtlı değil)
+// Send time of the last request (an interrupted test has no exact stop time recorded)
 function lastSentAt(rows: ResultRow[]): number {
   let last = 0;
   for (const row of rows) last = Math.max(last, row.timestamp.getTime() - row.responseTime);
@@ -56,7 +56,7 @@ export async function analyzeTestRun(id: string) {
   const testRun = await prisma.testRun.findUnique({ where: { id } });
   if (!testRun) return null;
 
-  // Test bitmeden analiz yapılmaz
+  // No analysis until the test has ended
   if (testRun.status === "RUNNING") return { status: "pending" as const };
 
   const rows = await prisma.testResult.findMany({
@@ -69,15 +69,15 @@ export async function analyzeTestRun(id: string) {
   const profile = profileOf(testRun);
   const stopped = testRun.status !== "COMPLETED";
 
-  // Saniyeler testin başlangıcından sayılır. Eski testlerde başlangıç kaydı yok: ilk isteğin gönderildiği an
-  // (sonuçlar gönderildikleri saniyeye yazıldığı için başlangıç da gönderme anı olmalı, ilk cevabın geldiği an değil).
+  // Seconds are counted from the test start. Old tests have no recorded start: use the first request's send time
+  // (since results are placed in the second they were sent, the start must also be a send time, not the first arrival time).
   const origin = testRun.startedAt?.getTime() ?? firstSentAt(rows);
 
-  // Analiz edilen süre (sn). Tamamlanan testte ayarlanan süre. Durdurulan, yarıda kalan ya da hatayla biten testte
-  // cevabı kaydedilmiş en son isteğin GÖNDERİLDİĞİ an. Durdurma anı değil: durdurunca yoldaki isteklerin cevapları
-  // hiç gelmez (her isteği 2 sn süren sunucuda son 2 saniyenin hepsi), onların saniyeleri "gönderildi ama cevap yok"
-  // görünüp sunucu çökmüş sanılmasın. Durduruluşta kaydedilemeyen son paket de böylece analizi bozmaz.
-  // (Yarıda kalan testte kesin durma anı zaten kayıtlı değil, eski kayıtlarda bitiş anı Volta'nın yeniden açıldığı an.)
+  // Analyzed duration (s). For a completed test, the configured duration. For a stopped, interrupted or failed test,
+  // the SEND time of the last request whose response was saved. Not the stop time: on stop, responses to in-flight requests
+  // never arrive (on a server where each request takes 2 s, all of the last 2 seconds), and their seconds shouldn't look like
+  // "sent but no response" and make the server seem collapsed. This way the last batch that couldn't be saved on stop doesn't skew the analysis either.
+  // (An interrupted test has no exact stop time recorded anyway; in old records the end time is when Volta restarted.)
   let effectiveDuration = testRun.duration;
   if (stopped) {
     const stopAt = Math.min(testRun.duration, (lastSentAt(rows) - origin) / 1000);
@@ -85,7 +85,7 @@ export async function analyzeTestRun(id: string) {
     effectiveDuration = stopAt - whole >= MIN_PARTIAL_SECOND ? stopAt : whole;
   }
 
-  // 1 saniyeden kısa testin analizi yanıltıcı olur (birkaç yüz milisaniyelik veri)
+  // Analysis of a test shorter than 1 second would be misleading (a few hundred milliseconds of data)
   if (effectiveDuration < 1) return { status: "tooShort" as const };
 
   const seconds = buildSeconds(rows, {
@@ -96,8 +96,8 @@ export async function analyzeTestRun(id: string) {
     profile,
   });
 
-  // Olay listesinin son satırı: tamamlanan testte son cevabın GELDİĞİ saniye (zaman aşımları dahil test o an bitti),
-  // durdurulan testte durma anının saniyesi
+  // Last row of the event list: for a completed test, the second the last response ARRIVED (the test ended then, timeouts included),
+  // for a stopped test, the second of the stop time
   const lastArrival = rows[rows.length - 1].timestamp.getTime();
   const endSecond = stopped ? Math.floor(effectiveDuration) : Math.floor((lastArrival - origin) / 1000) + 1;
 
@@ -114,11 +114,11 @@ export async function analyzeTestRun(id: string) {
   return {
     status: "ready" as const,
     stopped,
-    endReason: testRun.status, // STOPPED / INTERRUPTED / FAILED: arayüz uyarı metnini buna göre seçer
+    endReason: testRun.status, // STOPPED / INTERRUPTED / FAILED: the UI picks the warning text based on this
     verdict,
     baseline,
     voltaOverloaded: testRun.maxLagMs !== null && testRun.maxLagMs > WORKER_LAG_WARNING_MS,
-    // Kademe tablosu sadece kademeli testlerde anlamlı
+    // The step table only makes sense for stepped tests
     steps: profile.type === "STEPPED" ? steps : [],
     events,
     recommendations,

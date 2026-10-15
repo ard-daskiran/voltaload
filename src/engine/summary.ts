@@ -1,8 +1,8 @@
 import { prisma } from "../db/prisma.js";
 import { percentileIndex } from "./windowStats.js";
 
-// Gecikme hesaplarına giren satırlar: cevap gelenler + TIMEOUT'lar.
-// Bağlantı hataları anında döndüğü için ortalamayı yapay olarak düşürür, hariç tutulur.
+// Rows that count toward latency: responses that arrived + TIMEOUTs.
+// Connection errors return instantly and would artificially lower the average, so they're excluded.
 function latencyWhere(testRunId: string) {
   return {
     testRunId,
@@ -24,7 +24,7 @@ export interface TestSummary {
 }
 
 export async function computeTestSummary(testRunId: string): Promise<TestSummary> {
-  // Testin başlangıç anı (eski testlerde yok: o zaman ilk cevaptan sayılır)
+  // The test's start time (missing in old tests: then it counts from the first response)
   const run = await prisma.testRun.findUnique({ where: { id: testRunId }, select: { startedAt: true } });
 
   const totalRequests = await prisma.testResult.count({ where: { testRunId } });
@@ -44,7 +44,7 @@ export async function computeTestSummary(testRunId: string): Promise<TestSummary
     _sum: { responseSize: true },
   });
 
-  // Sunucu kaynaklı hatalar: 5xx + cevap gelmeyen her istek (TIMEOUT ve bağlantı hataları)
+  // Server-side errors: 5xx + every request with no response (TIMEOUT and connection errors)
   const serverErrorCount = await prisma.testResult.count({
     where: {
       testRunId,
@@ -52,7 +52,7 @@ export async function computeTestSummary(testRunId: string): Promise<TestSummary
     },
   });
 
-  // Standart sapma: sqrt(ortalama(x²) - ortalama(x)²)
+  // Standard deviation: sqrt(mean(x²) - mean(x)²)
   let stdDev: number | null = null;
   const avg = latencyAgg._avg.responseTime;
 
@@ -67,7 +67,7 @@ export async function computeTestSummary(testRunId: string): Promise<TestSummary
     stdDev = Math.sqrt(Math.max(0, avgSq - avg * avg));
   }
 
-  // Yüzdelik dilim: süreye göre sırala, ilgili sıradaki değeri al
+  // Percentile: sort by duration, take the value at the matching rank
   async function percentile(p: number): Promise<number | null> {
     if (latencyCount === 0) return null;
 
@@ -81,9 +81,9 @@ export async function computeTestSummary(testRunId: string): Promise<TestSummary
     return row?.responseTime ?? null;
   }
 
-  // Gerçek süre: testin başlangıcından son cevabın geldiği ana kadar (başlangıç kaydı olmayan eski testlerde ilk cevaptan).
-  // Son istek, süre bitmeden 1/RPS önce gönderildiği için çok kısa ve düşük RPS'li testlerde süre biraz kısa,
-  // gerçekleşen RPS biraz yüksek çıkar (10 RPS × 1 sn → ~11). Uzun testlerde fark kaybolur.
+  // Actual duration: from the test start to the last response's arrival (from the first response in old tests without a start time).
+  // The last request is sent 1/RPS before the duration ends, so in very short, low-RPS tests the duration comes out slightly short
+  // and the achieved RPS slightly high (10 RPS × 1 s → ~11). The difference disappears in longer tests.
   let actualDurationMs = 0;
   const start = run?.startedAt ?? allAgg._min.timestamp;
   if (start && allAgg._max.timestamp) {

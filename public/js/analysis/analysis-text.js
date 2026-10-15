@@ -1,9 +1,9 @@
-// Analiz verisini cümlelere, renklere ve simgelere çevirir. Detay sayfası ve rapor ortak kullanır.
-// Sunucu cümle göndermez, sadece veri gönderir; cümleler sözlükten kurulur (dil desteği için).
+// Turns analysis data into sentences, colors and icons. Shared by the detail page and the report.
+// The server sends data, not sentences; the sentences are built from the dictionary (for language support).
 
 import { t, formatNumber } from "../core/i18n.js";
 
-// Durum renkleri: göstergede soldan sağa en kötüden en iyiye
+// State colors: on the gauge, from worst to best, left to right
 export const HEALTH_COLORS = {
     HEALTHY: "#64d8d7",
     BORDERLINE: "#f4c21a",
@@ -16,7 +16,7 @@ export function healthLabel(state) {
     return t(`health.${state}`);
 }
 
-// "125–250 RPS" (bu ikisinin arasında bozuldu), "≥ 400 RPS" (sınır görülmedi), "< 100 RPS"
+// "125–250 RPS" (broke down between these two), "≥ 400 RPS" (no limit seen), "< 100 RPS"
 export function capacityText(capacity) {
     return t(`capacity.${capacity.kind}`, {
         rps: formatNumber(capacity.rps),
@@ -24,18 +24,18 @@ export function capacityText(capacity) {
     });
 }
 
-// Durumların kötülük sırası (göstergedeki sıranın tersi)
+// States ordered by severity (the reverse of the gauge order)
 function rank(state) {
     return HEALTH_ORDER.length - 1 - HEALTH_ORDER.indexOf(state);
 }
 
-// Kademeli testte cümle, her kötüleşmeyi sırayla anlatır:
-// "Sunucu 100 RPS'e kadar sağlıklı çalıştı, 200 RPS'te zorlanmaya başladı, 300 RPS'te zorlandı, 400 RPS'te çöktü."
+// In a stepped test the sentence describes each worsening in order:
+// "The server was healthy up to 100 RPS, started to strain at 200 RPS, was strained at 300 RPS, collapsed at 400 RPS."
 function steppedSentence(steps) {
     let healthyCount = 0;
     while (healthyCount < steps.length && steps[healthyCount].state === "HEALTHY") healthyCount++;
 
-    // Sağlıklı kısımdan sonra durumun her kötüleştiği kademe
+    // Each step after the healthy part where the state got worse
     const parts = [];
     let worstSoFar = "HEALTHY";
     for (const step of steps.slice(healthyCount)) {
@@ -50,11 +50,11 @@ function steppedSentence(steps) {
             ? t("verdict.healthyUpTo", { rps: formatNumber(steps[healthyCount - 1].targetRps) })
             : t("verdict.subject");
 
-    // İlk kademe sağlıklı değilse "Sunucu 100 RPS'te zorlanmaya başladı, ..." şeklinde başlar
+    // If the first step isn't healthy it starts like "The server started to strain at 100 RPS, ..."
     return `${start}${healthyCount > 0 ? ", " : " "}${parts.join(", ")}.`;
 }
 
-// Sonucun ana cümlesi (bağlantı uyarısı eklenmeden)
+// The result's main sentence (without the connection warning)
 function baseSentence(analysis, isStepped) {
     const { verdict, steps, recommendations } = analysis;
 
@@ -67,35 +67,35 @@ function baseSentence(analysis, isStepped) {
     const rps = formatNumber(c.rps);
 
     if (isStepped) {
-        // Hepsi sağlıklıysa "sınır görülmedi", ilk kademe bile kapasite dışıysa "ilk kademede zorlandı"
+        // "No limit was reached" if all are healthy; "strained even at the first step" if even the first step is beyond capacity
         if (steps.every((s) => s.state === "HEALTHY")) return t("verdict.atLeast", { rps });
         if (c.kind === "below") return t("verdict.belowStepped", { rps });
         return steppedSentence(steps);
     }
 
-    // Kapasiteye sayıldı ama gecikme arttıysa ("Sınırda") "sorunsuz" denmez
+    // If it counted toward capacity but latency rose ("Borderline"), don't say "without issues"
     if (c.kind === "atLeast") {
         return t(verdict.state === "HEALTHY" ? "verdict.atLeastConstant" : "verdict.atLeastConstantSlower", { rps });
     }
     return t("verdict.belowConstant", { rps });
 }
 
-// Sonuç cümlesi
+// Result sentence
 export function verdictSentence(analysis, isStepped) {
     const { verdict, recommendations } = analysis;
 
-    // Bağlantı koptu, öncesinde sağlıklıydı: ne olduğunu kendi cümlesi zaten anlatıyor
+    // The connection was lost after being healthy: its own sentence already explains what happened
     if (verdict.outage) {
         return t("verdict.outage", { second: verdict.outage.second, rps: formatNumber(verdict.outage.rps) });
     }
 
-    // Bağlantı koptuysa cümleye eklenir ("karşılayamadı" tek başına ne olduğunu anlatmaz)
+    // If the connection was lost it's added to the sentence ("could not handle" alone doesn't explain what happened)
     const sentence = baseSentence(analysis, isStepped);
     const connectionLost = recommendations.some((r) => r.type === "connection");
     return connectionLost ? `${sentence} ${t("verdict.connectionLost")}` : sentence;
 }
 
-// --- Olaylar ---
+// --- Events ---
 export function eventText(e) {
     switch (e.type) {
         case "start":
@@ -114,7 +114,7 @@ export function eventText(e) {
     }
 }
 
-// Olayın rengi: hatalar kırmızı, gecikme sarı, toparlanma cyan, diğerleri nötr
+// Event color: errors red, latency yellow, recovery cyan, others neutral
 export function eventColor(e) {
     switch (e.type) {
         case "errorsStart":
@@ -134,9 +134,9 @@ export function eventColor(e) {
     }
 }
 
-// --- Öneriler ---
+// --- Recommendations ---
 
-// tone: "problem" (kırmızı), "warning" (sarı), "action" (cyan, sonraki adım)
+// tone: "problem" (red), "warning" (yellow), "action" (cyan, next step)
 const REC_STYLE = {
     overload: { icon: "block", tone: "problem" },
     timeouts: { icon: "hourglass_bottom", tone: "problem" },
@@ -161,12 +161,12 @@ export const TONE_COLORS = {
     action: HEALTH_COLORS.HEALTHY,
 };
 
-// "Kademeli · maks. 300 RPS · 10 kademe · 30 sn"
+// "Stepped · max 300 RPS · 10 steps · 30s"
 export function followUpText(test) {
     return t("rec.followUp", { rps: formatNumber(test.targetRps), steps: test.stepCount, duration: test.duration });
 }
 
-// Bir önerinin görünümü: { icon, tone, title, text, test }
+// How a recommendation looks: { icon, tone, title, text, test }
 export function recommendationView(rec) {
     const style = REC_STYLE[rec.type] ?? { icon: "info", tone: "warning" };
     const percent = (share) => formatNumber(share * 100, 0);
@@ -181,7 +181,7 @@ export function recommendationView(rec) {
         to: rec.to !== undefined ? formatNumber(rec.to) : undefined,
     };
 
-    // Volta'nın üst sınırına ulaşıldıysa önerilecek test yok, farklı bir açıklama
+    // If Volta's upper limit was reached there's no test to suggest; a different explanation
     const textKey = rec.type === "noLimitFound" && !rec.test ? "rec.noLimitFound.maxed" : `rec.${rec.type}.text`;
 
     return {

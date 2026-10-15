@@ -1,6 +1,6 @@
-// Bir grup saniyenin (bir kademe ya da sabit testin tamamı) durumu:
-// sağlıklı / sınırda / zorlandı / çöktü. Beş ölçünün en kötüsü belirler:
-// hata oranı, bağlantı hatası, başarılı/hedef oranı, gecikme, yükselme eğilimi.
+// State of a group of seconds (a step or the whole constant test):
+// healthy / borderline / strained / collapsed. The worst of five measures decides:
+// error rate, connection errors, successful/target ratio, latency, rising trend.
 
 import { THRESHOLDS as T } from "./thresholds.js";
 import { median, type SecondStats } from "./seconds.js";  
@@ -9,7 +9,7 @@ import type { Baseline } from "./baseline.js";
 
 export type HealthState = "HEALTHY" | "BORDERLINE" | "STRAINED" | "COLLAPSED";
 
-// Durumun neden o olduğu (arayüz bunları açıklama olarak gösterebilir)
+// Why the state is what it is (the UI can show these as explanations)
 export type Reason =
   | "errors"
   | "connectionErrors"
@@ -26,7 +26,7 @@ function worst(a: HealthState, b: HealthState): HealthState {
 }
 
 export interface GroupStats {
-  expected: number; // Hedeflenen toplam istek
+  expected: number; // Total target requests
   total: number;
   success: number;
   serverErrors: number;
@@ -44,13 +44,13 @@ export interface GroupStats {
   targetRps: number;
 }
 
-// Saniyeleri birleştirir. p95/p99 bütün gecikmelerden yeniden hesaplanır (saniyelik p95'lerin ortalaması değil).
+// Merges seconds. p95/p99 are recomputed from all latencies (not the mean of per-second p95s).
 export function aggregate(seconds: SecondStats[]): GroupStats {
   const statusCounts: Record<string, number> = {};
   const latencies: number[] = [];
   let expected = 0, total = 0, success = 0, serverErrors = 0, connectionErrors = 0, timeouts = 0;
-  // Sadece hedefin olduğu saniyelerdeki başarılılar (sonuçlar gönderildikleri saniyeye yazıldığı için
-  // hedefsiz saniye oluşmuyor; bu bir güvence).
+  // Only successes in seconds that have a target (since results are placed in the second they were sent,
+  // seconds without a target don't occur; this is a safeguard).
   let successInTarget = 0;
 
   for (const s of seconds) {
@@ -69,8 +69,8 @@ export function aggregate(seconds: SecondStats[]): GroupStats {
 
   latencies.sort((a, b) => a - b);
 
-  // Saniye başına değerler (gerçekleşen RPS, ortalama hedef) hedefin olduğu saniyelerin SÜRESİNE bölünür.
-  // Durdurulan testin son saniyesi kısmi olabilir (0,6 sn'de 180 istek = 300 RPS, 180 değil).
+  // Per-second values (achieved RPS, average target) are divided by the DURATION of the seconds that have a target.
+  // The last second of a stopped test can be partial (180 requests in 0.6 s = 300 RPS, not 180).
   const targetSpan = seconds.filter((s) => s.targetRps > 0).reduce((sum, s) => sum + s.span, 0);
   const n = targetSpan > 0 ? targetSpan : Math.max(1, seconds.length);
 
@@ -94,7 +94,7 @@ export function aggregate(seconds: SecondStats[]): GroupStats {
   };
 }
 
-// Sağlıklı seviyeye göre gecikme sınırları ("N katı ya da +X ms, hangisi büyükse")
+// Latency limits relative to the baseline ("N times or +X ms, whichever is larger")
 export function latencyLimits(baseline: Baseline): { borderline: number; strained: number } | null {
   if (!baseline.valid || baseline.p95 === null) return null;
   const b = baseline.p95;
@@ -105,7 +105,7 @@ export function latencyLimits(baseline: Baseline): { borderline: number; straine
   };
 }
 
-// Aynı yük altında gecikme sürekli artıyor mu? (ilk saniyelerin ve son saniyelerin p95 ortancası)
+// Is latency steadily rising under the same load? (median p95 of the first seconds vs. the last seconds)
 function detectTrend(seconds: SecondStats[]): { from: number; to: number } | null {
   const p95s = seconds.map((s) => percentileOf(s.latencies, 0.95)).filter((v): v is number => v !== null);
   if (p95s.length < T.trend.minSeconds) return null;
@@ -137,28 +137,28 @@ export function classifyGroup(seconds: SecondStats[], baseline: Baseline): Class
     state = worst(state, to);
   };
 
-  // Hedef vardı ama hiç cevap gelmedi
+  // There was a target but no responses arrived at all
   if (stats.total === 0) {
     if (stats.expected > 0) raise("COLLAPSED", "noResponses");
     return { stats, state, reasons, trend: null };
   }
 
-  // 1. Hata oranı
+  // 1. Error rate
   const e = T.errorRate;
   if (stats.errorRate >= e.collapsed) raise("COLLAPSED", "errors");
   else if (stats.errorRate >= e.strained) raise("STRAINED", "errors");
   else if (stats.errorRate >= e.borderline) raise("BORDERLINE", "errors");
 
-  // 2. Bağlantı hatası (sunucu kapandı ya da bağlantıyı kesti)
+  // 2. Connection errors (the server shut down or dropped the connection)
   if (stats.connectionErrorRate >= T.connectionErrorRate) raise("COLLAPSED", "connectionErrors");
 
-  // 3. Başarılı istek / hedeflenen
+  // 3. Successful requests / target
   const tp = T.throughput;
   if (stats.throughputRatio < tp.collapsed) raise("COLLAPSED", "throughput");
   else if (stats.throughputRatio < tp.strained) raise("STRAINED", "throughput");
   else if (stats.throughputRatio < tp.borderline) raise("BORDERLINE", "throughput");
 
-  // 4. Gecikme: sağlıklı seviyeye göre ve sabit sınırlara göre
+  // 4. Latency: relative to the baseline and against fixed limits
   if (stats.p95 !== null) {
     const limits = latencyLimits(baseline);
     if (limits) {
@@ -170,7 +170,7 @@ export function classifyGroup(seconds: SecondStats[], baseline: Baseline): Class
     else if (stats.p95 >= T.absolute.borderlineMs) raise("BORDERLINE", "latencyAbsolute");
   }
 
-  // 5. Yükselme eğilimi (kuyruk birikiyor)
+  // 5. Rising trend (queue buildup)
   const trend = detectTrend(seconds);
   if (trend) raise("BORDERLINE", "rising");
 

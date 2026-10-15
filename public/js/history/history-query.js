@@ -1,6 +1,6 @@
-// Listenin durumu (sayfa, filtre, arama, sıralama) sayfanın adresinde tutulur:
+// The list's state (page, filter, search, sort) is kept in the page's URL:
 //   /history.html?page=2&method=GET&search=products&sort=oldest
-// Böylece detay sayfasından geri dönünce aynı yere dönülür.
+// This way coming back from the detail page returns to the same place.
 
 const METHODS = ["GET", "POST"];
 
@@ -19,7 +19,7 @@ export function readQuery() {
     };
 }
 
-// Sadece varsayılandan farklı değerleri yaz, adres sade kalsın
+// Write only values that differ from the default, so the URL stays clean
 function toParams(state) {
     const params = new URLSearchParams();
     if (state.page > 1) params.set("page", String(state.page));
@@ -29,13 +29,13 @@ function toParams(state) {
     return params;
 }
 
-// Adresi güncelle. replaceState: her harf ya da sayfa değişimi tarayıcı geçmişine ayrı kayıt olarak eklenmez.
+// Update the URL. replaceState: each keystroke or page change isn't added as a separate browser history entry.
 export function writeQuery(state) {
     const query = toParams(state).toString();
     window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
 }
 
-// Sunucuya gidecek parametreler
+// Parameters to send to the server
 export function toApiParams(state, pageSize) {
     const params = toParams(state);
     params.set("page", String(state.page));

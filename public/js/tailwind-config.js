@@ -1,5 +1,5 @@
-// Volta tasarım sistemi: tüm sayfalar bu ayarları kullanır.
-// Tailwind CDN script'inden SONRA yüklenmelidir.
+// Volta design system: all pages use these settings.
+// Must be loaded AFTER the Tailwind CDN script.
 tailwind.config = {
     darkMode: "class",
     theme: {

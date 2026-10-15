@@ -1,4 +1,4 @@
-// .env her şeyden önce yüklenmeli: config.ts (VOLTA_PORT) ve db/prisma.ts (DATABASE_URL) onu okuyor
+// .env must load before everything else: config.ts (VOLTA_PORT) and db/prisma.ts (DATABASE_URL) read it
 import "./env.js";
 import express, { type Request, type Response, type NextFunction } from "express";
 import path from "node:path";
@@ -23,15 +23,15 @@ import {
 import { createSavedTargetRouter } from "./routes/savedTargets.js";
 import { apiError, errorBody } from "./errors.js";
 
-// --- Güvenlik: istek Volta'nın kendi adresinden mi geliyor? ---
-// Volta sadece bu bilgisayardan erişilebilir (127.0.0.1), ama tarayıcıda açık olan başka bir site
-// tarayıcı üzerinden Volta'ya istek atmaya çalışabilir. Üç kontrol:
-//   Host:   tarayıcı adres çubuğundaki adı yazar. "kotu-site.com:4400" gibi bir ad reddedilir (DNS rebinding).
-//   Origin: isteği hangi sitenin gönderdiğini yazar. Durum değiştiren isteklerde ve canlı bağlantıda
-//           sadece Volta'nın kendi sayfası kabul edilir. Origin yoksa (curl gibi tarayıcı dışı araçlar) izin verilir.
-//   Çerçeve: Volta başka bir sitenin içinde (iframe) açılamaz (görünmez çerçeveyle tıklatma saldırısı).
+// --- Security: does the request come from Volta's own address? ---
+// Volta is reachable only from this computer (127.0.0.1), but another site open in the browser
+// may try to send requests to Volta through the browser. Three checks:
+//   Host:   the name in the browser's address bar. A name like "evil.example:4400" is rejected (DNS rebinding).
+//   Origin: which site sent the request. For state-changing requests and the live connection,
+//           only Volta's own page is accepted. If there's no Origin (non-browser tools like curl), it's allowed.
+//   Frame:  Volta can't be opened inside another site (iframe) (clickjacking with an invisible frame).
 
-// Tarayıcı Host'a portu her zaman yazar (port 80 ayarlarda yasak)
+// The browser always puts the port in Host (port 80 is forbidden in the settings)
 const allowedHosts = new Set(ALLOWED_HOSTNAMES.map((name) => `${name}:${VOLTA_PORT}`));
 const allowedOrigins = new Set(ALLOWED_HOSTNAMES.map((name) => `http://${name}:${VOLTA_PORT}`));
 
@@ -45,17 +45,17 @@ function isAllowedOrigin(origin: string | undefined): boolean {
 
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-// Test kimlikleri UUID. Odaya katılırken başka bir şey gelirse yok sayılır.
+// Test IDs are UUIDs. Anything else sent when joining a room is ignored.
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// --- Uygulama ---
+// --- App ---
 
 const app = express();
 
-// Cevaplarda "X-Powered-By: Express" yazmasın (gereksiz bilgi)
+// Don't send "X-Powered-By: Express" in responses (unnecessary information)
 app.disable("x-powered-by");
 
-// Güvenlik kontrolü bütün isteklerden önce (sayfalar dahil)
+// Security check before every request (pages included)
 app.use((req, res, next) => {
   if (!isAllowedHost(req.headers.host)) {
     return res.status(403).json(errorBody(apiError("FORBIDDEN_HOST", { port: VOLTA_PORT })));
@@ -75,8 +75,8 @@ app.get("/api/health", (req, res) => {
 });
 
 
-// Test sınırları: arayüz kendi kontrollerini, kutuların min/max değerlerini ve ipuçlarını buradan alır.
-// Sınırlar sadece config.ts'te yazılı; değiştirince arayüz de kendiliğinden uyar.
+// Test limits: the UI gets its own checks, the inputs' min/max values and hints from here.
+// The limits are only written in config.ts; when they change, the UI follows automatically.
 app.get("/api/limits", (req, res) => {
   res.json({
     minTargetRps: MIN_TARGET_RPS,
@@ -91,8 +91,8 @@ app.get("/api/limits", (req, res) => {
 
 const httpServer = createServer(app);
 
-// Canlı bağlantı: Express'in kontrolünden geçmez (Socket.io kendi adresini kendisi karşılar), aynı kontrol burada.
-// Tarayıcılar WebSocket'te CORS kuralını uygulamadığı için Origin kontrolü özellikle önemli.
+// Live connection: it doesn't go through Express's check (Socket.io handles its own path), so the same check is here.
+// The Origin check matters especially because browsers don't apply CORS rules to WebSockets.
 const io = new Server(httpServer, {
   allowRequest: (req, callback) => {
     callback(null, isAllowedHost(req.headers.host) && isAllowedOrigin(req.headers.origin));
@@ -102,13 +102,13 @@ const io = new Server(httpServer, {
 app.use("/api/test-run", createTestRunRouter(io));
 app.use("/api/targets", createSavedTargetRouter());
 
-// /api altında bulunamayan adresler: Express'in HTML sayfası yerine JSON
+// Unknown paths under /api: JSON instead of Express's HTML page
 app.use("/api", (req, res) => {
   res.status(404).json(errorBody(apiError("API_NOT_FOUND")));
 });
 
-// Hata yakalayıcı: gövde okunurken ya da bir rotada çıkan hatalar. En sonda olmalı (dört parametreli).
-// Cevap her zaman { error, code } biçiminde; yığın izi ve dosya yolları kullanıcıya gönderilmez, terminale yazılır.
+// Error handler: errors while reading the body or in a route. Must be last (four parameters).
+// The response is always { error, code }; stack traces and file paths aren't sent to the user, they're written to the terminal.
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) return next(err);
 
@@ -119,20 +119,20 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     return res.status(400).json(errorBody(apiError("INVALID_JSON")));
   }
 
-  console.error("Beklenmeyen sunucu hatası:", err);
+  console.error("Unexpected server error:", err);
   res.status(500).json(errorBody(apiError("INTERNAL_ERROR")));
 });
 
 io.on("connection", (socket) => {
-  // Test odasına katılma (canlı akışı dinlemek için). Sadece test kimliği biçimindeki değerler kabul edilir.
+  // Joining a test room (to listen to the live stream). Only values shaped like a test ID are accepted.
   socket.on("join-test", (testRunId: unknown) => {
     if (typeof testRunId !== "string" || !UUID_PATTERN.test(testRunId)) return;
     socket.join(testRunId);
   });
 });
 
-// Volta test sırasında kapandıysa o testler RUNNING kalır.
-// Açılışta bunları INTERRUPTED olarak işaretle ve eldeki verilerden özetlerini hesapla.
+// If Volta shut down during a test, those tests stay RUNNING.
+// On startup, mark them INTERRUPTED and compute their summaries from the available data.
 async function markInterruptedRuns() {
   const stuckRuns = await prisma.testRun.findMany({
     where: { status: "RUNNING" },
@@ -143,8 +143,8 @@ async function markInterruptedRuns() {
     try {
       const summary = await computeTestSummary(run.id);
 
-      // Bitiş anı: son kaydedilen sonuç. (Volta'nın yeniden açıldığı an değil; o saatler sonrası olabilir
-      // ve analiz aradaki bütün saniyeleri "cevap gelmedi" sanıp sunucuyu suçlar.) Hiç sonuç yoksa başlangıç.
+      // End time: the last saved result. (Not when Volta restarted; that could be hours later
+      // and the analysis would treat every second in between as "no response" and blame the server.) If there are no results, the start.
       const last = await prisma.testResult.findFirst({
         where: { testRunId: run.id },
         orderBy: { timestamp: "desc" },
@@ -157,17 +157,17 @@ async function markInterruptedRuns() {
         data: { status: "INTERRUPTED", finishedAt, ...summary },
       });
     } catch (err) {
-      console.error(`Test ${run.id} işaretlenemedi:`, err);
+      console.error(`Could not mark test ${run.id}:`, err);
     }
   }
 
   if (stuckRuns.length > 0) {
-    console.log(`${stuckRuns.length} yarıda kalmış test INTERRUPTED olarak işaretlendi.`);
+    console.log(`Marked ${stuckRuns.length} interrupted test(s) as INTERRUPTED.`);
   }
 }
 
 async function main() {
-  // Önce ayarlar: geçersiz bir değerle (0 saniyelik test, yanlış port...) açılmasın, ne yanlış olduğunu söylesin
+  // Settings first: don't start with an invalid value (0-second test, wrong port...), say what's wrong
   const problems = validateConfig();
   if (problems.length > 0) {
     console.error("Volta could not start: invalid settings (src/config.ts or .env).");
@@ -179,11 +179,11 @@ async function main() {
   await markInterruptedRuns();
 
   httpServer.listen(VOLTA_PORT, VOLTA_HOST, () => {
-    console.log(`Volta sunucusu http://localhost:${VOLTA_PORT} adresinde çalışıyor.`);
+    console.log(`Volta server is running at http://localhost:${VOLTA_PORT}.`);
   });
 }
 
 main().catch((err) => {
-  console.error("Volta başlatılamadı:", err);
+  console.error("Volta could not start:", err);
   process.exit(1);
 });

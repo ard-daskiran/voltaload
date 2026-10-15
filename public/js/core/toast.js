@@ -1,9 +1,9 @@
-// Bildirim kutusu (toast): sağ altta birkaç saniye görünür, sonra solar.
-//   type: "success" (cyan ✓), "danger" (kırmızı, silme), "info" (sarı, soru)
-//   actions: [{ label, primary, onClick }] → butonlu bildirim; butona basınca bildirim kapanır
-//   Fare üzerindeyken süre durur, kullanıcı okurken kaybolmaz.
-// Başka bir sayfada gösterilecek bildirim için queueToast → o sayfa açılınca showQueuedToast.
-// Görünme/kaybolma animasyonu doğrudan stil ile (Tailwind'in sınıfları geç uygulamasından etkilenmesin).
+// Notification box (toast): visible at the bottom right for a few seconds, then fades.
+//   type: "success" (cyan ✓), "danger" (red, delete), "info" (yellow, question)
+//   actions: [{ label, primary, onClick }] → notification with buttons; clicking a button closes it
+//   The timer pauses while the mouse is over it, so it doesn't vanish while the user is reading.
+// For a notification to show on another page: queueToast → showQueuedToast when that page opens.
+// The show/hide animation uses inline styles directly (so it's not affected by Tailwind applying classes late).
 
 const FLASH_KEY = "volta-flash";
 const DEFAULT_DURATION_MS = 3000;
@@ -36,8 +36,8 @@ function actionButton({ label, primary }) {
     return btn;
 }
 
-// message: ana metin, detail: altında küçük açıklama (isteğe bağlı)
-// Dönüş: { close } (bildirimi elle kapatmak için)
+// message: main text, detail: small description below it (optional)
+// Returns: { close } (to close the notification manually)
 export function showToast(message, { detail, type = "success", durationMs = DEFAULT_DURATION_MS, actions = [] } = {}) {
     const style = STYLES[type] ?? STYLES.success;
 
@@ -72,7 +72,7 @@ export function showToast(message, { detail, type = "success", durationMs = DEFA
 
     card.append(icon, text);
 
-    // --- Kapanma ve süre ---
+    // --- Closing and timer ---
     let closed = false;
     let timer = null;
     let remaining = durationMs;
@@ -101,7 +101,7 @@ export function showToast(message, { detail, type = "success", durationMs = DEFA
     card.addEventListener("mouseenter", pauseTimer);
     card.addEventListener("mouseleave", startTimer);
 
-    // --- Butonlar ---
+    // --- Buttons ---
     if (actions.length > 0) {
         const row = document.createElement("div");
         row.className = "flex justify-end gap-2 mt-2";
@@ -118,7 +118,7 @@ export function showToast(message, { detail, type = "success", durationMs = DEFA
 
     getContainer().append(card);
 
-    // Bir sonraki karede görünür hale getir (geçiş animasyonu çalışsın)
+    // Make it visible on the next frame (so the transition animation runs)
     requestAnimationFrame(() => {
         card.style.opacity = "1";
         card.style.transform = "translateY(0)";
@@ -128,12 +128,12 @@ export function showToast(message, { detail, type = "success", durationMs = DEFA
     return { close };
 }
 
-// Bir sonraki açılan sayfada gösterilecek bildirimi bırak
+// Leave a notification to show on the next page that opens
 export function queueToast(message, options = {}) {
     sessionStorage.setItem(FLASH_KEY, JSON.stringify({ message, options }));
 }
 
-// Bırakılmış bildirim varsa göster ve sil (sayfa yenilenince tekrar çıkmaz)
+// Show and delete a left notification if there is one (it won't appear again on reload)
 export function showQueuedToast() {
     const raw = sessionStorage.getItem(FLASH_KEY);
     if (!raw) return;
@@ -143,6 +143,6 @@ export function showQueuedToast() {
         const { message, options } = JSON.parse(raw);
         if (typeof message === "string") showToast(message, options);
     } catch {
-        // Bozuk not: sessizce geç
+        // Corrupt entry: skip silently
     }
 }

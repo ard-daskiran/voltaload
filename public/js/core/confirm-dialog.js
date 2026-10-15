@@ -1,29 +1,29 @@
-// Onay penceresi: geri alınamayan işlemlerden önce sorar.
-//   - Açılınca imleç "Vazgeç"te durur (yanlışlıkla Enter'a basılırsa hiçbir şey olmaz)
-//   - Esc, pencere dışına tıklama ya da "Vazgeç" kapatır
-//   - requireText verilirse onay butonu, o metin yazılana kadar pasif kalır
-//   - onConfirm verilirse işlem pencere açıkken yapılır; hata olursa pencerede gösterilir
-//   - doneLabel verilirse işlem bitince buton kısa bir an bu metni gösterir ("✓ SİLİNDİ")
-// Dönüş: Promise<boolean>, onaylanıp işlem başarılıysa true
+// Confirmation dialog: asks before irreversible actions.
+//   - When opened, focus is on "Cancel" (so pressing Enter by accident does nothing)
+//   - Esc, clicking outside the dialog or "Cancel" closes it
+//   - If requireText is given, the confirm button stays disabled until that text is typed
+//   - If onConfirm is given, the action runs while the dialog is open; errors are shown in the dialog
+//   - If doneLabel is given, the button briefly shows this text when the action finishes ("✓ DELETED")
+// Returns: Promise<boolean>, true if confirmed and the action succeeded
 
 import { t } from "./i18n.js";
 import { el } from "./dom.js";
 
-// Türkçe İ / I farkı yüzünden "sil", "SİL" ve "SIL" aynı kabul edilsin
+// Because of the Turkish İ / I difference, treat "sil", "SİL" and "SIL" as the same
 function normalize(text) {
     return text.trim().toLocaleUpperCase("tr-TR").replaceAll("İ", "I");
 }
 
-const DONE_DISPLAY_MS = 700; // "✓ SİLİNDİ" yazısının görünme süresi
+const DONE_DISPLAY_MS = 700; // How long the "✓ DELETED" text stays visible
 
 export function confirmDialog({ title, message, details = [], confirmLabel, busyLabel, doneLabel, requireText = null, onConfirm }) {
     return new Promise((resolve) => {
         const previousFocus = document.activeElement;
-        // Açılmadan önceki kaydırma durumu: başka bir pencerenin üstünde açıldıysa (rehber) kapanınca ona dönülsün
+        // Scroll state before opening: if opened on top of another dialog (target book), restore it on close
         const previousOverflow = document.body.style.overflow;
         let busy = false;
 
-        // --- Pencere ---
+        // --- Dialog ---
         const overlay = el("div", "fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm");
         const box = el("div", "relative w-full max-w-md bg-surface-container-lowest border border-border-subtle rounded-lg shadow-2xl flex flex-col overflow-hidden");
         box.setAttribute("role", "dialog");
@@ -64,7 +64,7 @@ export function confirmDialog({ title, message, details = [], confirmLabel, busy
         errorText.hidden = true;
         body.append(errorText);
 
-        // --- Butonlar ---
+        // --- Buttons ---
         const footer = el("div", "px-6 py-4 border-t border-border-subtle bg-surface-container-low/70 flex items-center justify-end gap-3");
 
         const cancelBtn = el(
@@ -90,7 +90,7 @@ export function confirmDialog({ title, message, details = [], confirmLabel, busy
         box.append(bar, body, footer);
         overlay.append(box);
 
-        // --- Davranış ---
+        // --- Behavior ---
         function close(result) {
             document.removeEventListener("keydown", onKey);
             overlay.remove();
@@ -103,8 +103,8 @@ export function confirmDialog({ title, message, details = [], confirmLabel, busy
             if (e.key === "Escape" && !busy) close(false);
         }
 
-        // Sadece dışarıda basılıp dışarıda bırakılırsa kapat
-        // (kutunun içinde yazı seçerken fare dışarı kayınca kapanmasın)
+        // Close only if pressed and released outside
+        // (so it doesn't close when the mouse slips outside while selecting text in the box)
         let pressedOnBackdrop = false;
         overlay.addEventListener("mousedown", (e) => {
             pressedOnBackdrop = e.target === overlay;
@@ -131,7 +131,7 @@ export function confirmDialog({ title, message, details = [], confirmLabel, busy
 
             try {
                 await onConfirm();
-                // İşlem bitti: kısa bir an "✓ SİLİNDİ" göster, sonra kapat
+                // Action finished: briefly show "✓ DELETED", then close
                 if (doneLabel) {
                     confirmBtn.textContent = doneLabel;
                     await new Promise((r) => setTimeout(r, DONE_DISPLAY_MS));

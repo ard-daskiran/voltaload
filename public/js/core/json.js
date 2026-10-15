@@ -1,6 +1,6 @@
 // json.js
-// JSON metnini okunaklı (girintili) yazar. Geçerli JSON değilse olduğu gibi döner.
-// Detay sayfası, rapor ve form (yeniden çalıştırma, yeniden bağlanma) kullanır.
+// Pretty-prints (indents) JSON text. Returns it unchanged if it's not valid JSON.
+// Used by the detail page, the report and the form (rerun, reconnect).
 export function prettyJson(text) {
     if (!text) return text ?? "";
     try {

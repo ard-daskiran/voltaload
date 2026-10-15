@@ -1,5 +1,5 @@
-// Grafiğin üstündeki açıklama satırı: çizgi adına tıklayınca çizgi gizlenir ya da gösterilir.
-// Butonlar HTML'de data-series="0..4" ile işaretli.
+// The legend row above the chart: clicking a line's name hides or shows that line.
+// The buttons are marked in HTML with data-series="0..4".
 
 export function updateLegendButtons(chart) {
     document.querySelectorAll("[data-series]").forEach((btn) => {
@@ -9,7 +9,7 @@ export function updateLegendButtons(chart) {
     });
 }
 
-// getChart: o anki grafiği döndüren fonksiyon (grafik her testte yeniden kurulduğu için)
+// getChart: a function that returns the current chart (since the chart is rebuilt for every test)
 export function bindLegend(getChart) {
     document.querySelectorAll("[data-series]").forEach((btn) => {
         btn.addEventListener("click", () => {

@@ -16,16 +16,16 @@ model TestRun {
   duration  Int
   createdAt DateTime @default(now())
 
-  // CONSTANT (sabit yük) | STEPPED (kademeli artış)
+  // CONSTANT (constant load) | STEPPED (stepped increase)
   loadProfile String @default("CONSTANT")
-  // Sadece STEPPED testlerde dolu
+  // Only set for STEPPED tests
   stepCount   Int?
 
   // RUNNING | COMPLETED | STOPPED | FAILED | INTERRUPTED
   status     String    @default("RUNNING")
   finishedAt DateTime?
 
-  // Test bitince bir kere hesaplanıp yazılır. Geçmiş listesi sadece bunları okur.
+  // Computed and written once when the test ends. The history list reads only these.
   totalRequests    Int?
   avgResponseTime  Float?
   minResponseTime  Int?
@@ -36,13 +36,13 @@ model TestRun {
   serverErrorCount Int?
   totalBytes       BigInt?
   actualDurationMs Int?
-  // Test boyunca Volta'nın en yüksek gecikmesi (ilk saniye hariç).
-  // Uyarı sınırını aştıysa analiz "Volta zorlandı, sonuçlar güvenilir olmayabilir" der.
+  // Highest Volta lag during the test (excluding the first second).
+  // If it exceeded the warning limit, the analysis says "Volta was under strain during this test, results may be unreliable".
   maxLagMs         Int?
 
-  // Testin gerçek başlangıç anı: worker zamanlayıcıyı başlatmadan hemen önce bildirir.
-  // Analiz, özet ve grafik saniyeleri buradan sayar (ilk cevaptan değil).
-  // Bu alan eklenmeden önceki testlerde boştur, o zaman ilk cevaptan sayılır.
+  // The test's actual start time: the worker reports it right before starting the scheduler.
+  // Analysis, summary and chart seconds are counted from here (not from the first response).
+  // Empty for tests made before this field was added; those count from the first response.
   startedAt DateTime?
 
   results TestResult[]
@@ -53,15 +53,15 @@ model TestResult {
   testRunId String
   timestamp DateTime @default(now())
 
-  // Cevap gelmediyse 0
+  // 0 if no response arrived
   statusCode Int
 
-  // Cevap gelmediyse: TIMEOUT | CONNECTION_REFUSED | CONNECTION_RESET | NETWORK_ERROR
+  // If no response arrived: TIMEOUT | CONNECTION_REFUSED | CONNECTION_RESET | NETWORK_ERROR
   errorType String?
 
   responseTime Int
 
-  // Ağdan inen boyut (byte)
+  // Size downloaded over the network (bytes)
   responseSize Int @default(0)
 
   testRun TestRun @relation(fields: [testRunId], references: [id], onDelete: Cascade)
@@ -69,11 +69,11 @@ model TestResult {
   @@index([testRunId])
 }
 
-// Kayıtlı hedefler (URL rehberi). Veritabanı temizleme bu tabloya dokunmaz.
+// Saved targets (target book). Clearing the database doesn't touch this table.
 model SavedTarget {
   id        Int      @id @default(autoincrement())
   name      String
-  // İsmin küçük harfli hali: "Test Sunucusu" ile "test sunucusu" aynı sayılsın
+  // Lowercased name: so "Test Sunucusu" and "test sunucusu" count as the same
   nameKey   String   @unique
   url       String   @unique
   createdAt DateTime @default(now())

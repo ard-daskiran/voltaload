@@ -1,7 +1,7 @@
-// Zaman çizelgesi. Bir sorun ancak üst üste en az "sustainedSeconds" saniye sürerse olay sayılır
-// (tek saniyelik sıçramalar yanlış alarm üretmesin).
-// "Hatalar başladı" ve "zirve" sadece sunucunun cevap tarafındaki hataları sayar (5xx, zaman aşımı).
-// Bağlantı hataları kendi olayıyla gösterilir ("Sunucuya bağlanılamıyor"), aynı şey iki kez yazılmasın.
+// Timeline. A problem counts as an event only if it lasts at least "sustainedSeconds" consecutive seconds
+// (so one-second spikes don't cause false alarms).
+// "Errors started" and "peak" count only response-side server errors (5xx, timeout).
+// Connection errors are shown with their own event ("Cannot connect to the server"), so the same thing isn't reported twice.
 
 import { THRESHOLDS as T } from "./thresholds.js";
 import { type SecondStats } from "./seconds.js";
@@ -22,11 +22,11 @@ export type AnalysisEvent =
   | { type: "recovered"; second: number }
   | { type: EndEventType; second: number };
 
-// Testin nasıl bittiği: tamamlandı, durduruldu, yarıda kaldı (Volta kapandı), hatayla bitti
+// How the test ended: completed, stopped, interrupted (Volta shut down), ended with an error
 export type EndEventType = "end" | "stopped" | "interrupted" | "failed";
 
 
-// Koşulun üst üste "sustainedSeconds" saniye sağlandığı ilk saniye
+// First second where the condition holds for "sustainedSeconds" consecutive seconds
 function firstSustained(seconds: SecondStats[], test: (s: SecondStats) => boolean, fromPosition = 0): number {
   let run = 0;
   for (let i = fromPosition; i < seconds.length; i++) {
@@ -36,8 +36,8 @@ function firstSustained(seconds: SecondStats[], test: (s: SecondStats) => boolea
   return -1;
 }
 
-// Bir saniyedeki cevap tarafı hata kodları (5xx ve zaman aşımı; bağlantı hataları hariç).
-// Durum kodları sayıyla ("503"), cevapsızlar hata türüyle ("TIMEOUT") anahtarlanmış.
+// Response-side error codes in a second (5xx and timeout; connection errors excluded).
+// Status codes are keyed by number ("503"), missing responses by error type ("TIMEOUT").
 function responseErrorCodes(second: SecondStats): string[] {
   return Object.keys(second.statusCounts)
     .map((code) => ({ code, statusCode: Number(code) || 0, errorType: Number(code) ? null : code }))
@@ -46,7 +46,7 @@ function responseErrorCodes(second: SecondStats): string[] {
     .sort();
 }
 
-// Cevap tarafı hata oranı: bütün sunucu hataları eksi bağlantı hataları
+// Response-side error rate: all server errors minus connection errors
 const responseErrorRateOf = (s: SecondStats) => (s.total > 0 ? (s.serverErrors - s.connectionErrors) / s.total : 0);
 const hasResponseErrors = (s: SecondStats) => s.total > 0 && responseErrorRateOf(s) >= T.errorRate.borderline;
 const isDisconnected = (s: SecondStats) =>
@@ -59,7 +59,7 @@ export function buildEvents(
   steps: StepResult[],
   baseline: Baseline,
   isStepped: boolean,
-  endSecond: number, // Testin bittiği an (tamamlanan testte son cevabın geldiği saniye)
+  endSecond: number, // When the test ended (for a completed test, the second the last response arrived)
   endType: EndEventType
 ): AnalysisEvent[] {
   const events: AnalysisEvent[] = [];
@@ -67,7 +67,7 @@ export function buildEvents(
 
   events.push({ type: "start", second: 0, rps: Math.round(seconds[0].targetRps) });
 
-  // Kademe geçişleri
+  // Step transitions
   if (isStepped) {
     for (const range of ranges.slice(1)) {
       if (range.from >= endSecond) break;
@@ -76,7 +76,7 @@ export function buildEvents(
     }
   }
 
-  // Gecikme artışı (sağlıklı seviye varsa ona göre, yoksa "baştan zorlandı")
+  // Latency rise (relative to the baseline if there is one, otherwise "strained from the start")
   const limits = latencyLimits(baseline);
   if (limits) {
     const i = firstSustained(seconds, (s) => {
@@ -92,12 +92,12 @@ export function buildEvents(
       });
     }
   } else if (baseline.measured) {
-    // Ölçülebilir saniyeler vardı ama sağlıklı değildi. (Hiç ölçülemediyse, yani sunucuya baştan
-    // bağlanılamadıysa, bunu "Sunucuya bağlanılamıyor" olayı zaten anlatıyor.)
+    // There were measurable seconds but they weren't healthy. (If nothing could be measured, i.e. the server
+    // couldn't be reached from the start, the "Cannot connect to the server" event already covers it.)
     events.push({ type: "unhealthyFromStart", second: 0 });
   }
 
-  // Kuyruk birikmesi (kademe ya da sabit test içinde gecikme sürekli artıyor)
+  // Queue buildup (latency steadily rising within a step or a constant test)
   for (const step of steps) {
     if (step.trend) {
       const middle = step.fromSecond + Math.floor((step.toSecond - step.fromSecond) / 2);
@@ -105,7 +105,7 @@ export function buildEvents(
     }
   }
 
-  // Cevap tarafı hataların başlaması ve zirvesi
+  // Start and peak of response-side errors
   const errorsAt = firstSustained(seconds, hasResponseErrors);
   if (errorsAt >= 0) {
     events.push({ type: "errorsStart", second: seconds[errorsAt].index, codes: responseErrorCodes(seconds[errorsAt]) });
@@ -117,7 +117,7 @@ export function buildEvents(
     }
   }
 
-  // Bağlantı kopması ve toparlanma
+  // Connection lost and recovery
   const lostAt = firstSustained(seconds, isDisconnected);
   if (lostAt >= 0) {
     events.push({ type: "connectionLost", second: seconds[lostAt].index });
@@ -127,7 +127,7 @@ export function buildEvents(
 
   events.push({ type: endType, second: endSecond });
 
-  // Zamana göre sırala (aynı saniyedekiler eklendikleri sırada kalır)
+  // Sort by time (events in the same second keep their insertion order)
   return events
     .map((e, order) => ({ e, order }))
     .sort((a, b) => a.e.second - b.e.second || a.order - b.order)

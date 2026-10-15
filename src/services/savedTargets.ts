@@ -1,6 +1,6 @@
-// URL rehberi: kayıtlı hedefleri listeleme, ekleme, silme.
-// Ayrıca geçmiş listesi ve detay sayfası için URL → isim eşleştirmesi.
-// Eşleştirme URL'nin birebir aynısıyla yapılır (localhost ile 127.0.0.1 farklı sayılır).
+// Target book: listing, adding and deleting saved targets.
+// Also URL → name matching for the history list and the detail page.
+// Matching uses the exact URL (localhost and 127.0.0.1 count as different).
 
 import { prisma } from "../db/prisma.js";
 import { checkLocalUrl } from "../engine/security.js";
@@ -9,7 +9,7 @@ import { MAX_URL_LENGTH, MAX_SEARCH_LENGTH } from "../config.js";
 
 const MAX_NAME_LENGTH = 40;
 
-// İsmin karşılaştırma için küçük harfli hali ("Test Sunucusu" → "test sunucusu")
+// Lowercased name for comparison ("Test Sunucusu" → "test sunucusu")
 function nameKeyOf(name: string): string {
   return name.trim().toLocaleLowerCase("tr-TR");
 }
@@ -41,7 +41,7 @@ export async function createSavedTarget(input: any): Promise<CreateResult> {
     return { ok: false, status: 400, error: apiError("INVALID_URL") };
   }
 
-  // Test başlatırkenki adres kontrolünün aynısı, ama hedefe bağlanmadan
+  // Same address check as when starting a test, but without connecting to the target
   const check = await checkLocalUrl(url);
   if (!check.ok) return { ok: false, status: 400, error: check.error };
 
@@ -64,7 +64,7 @@ export async function createSavedTarget(input: any): Promise<CreateResult> {
     });
     return { ok: true, target };
   } catch (err: any) {
-    // Aynı anda iki kayıt gelirse veritabanının benzersizlik kuralı yakalar
+    // If two saves arrive at once, the database's unique constraint catches it
     if (err?.code === "P2002") return { ok: false, status: 409, error: apiError("TARGET_EXISTS") };
     throw err;
   }
@@ -75,7 +75,7 @@ export async function deleteSavedTarget(id: number): Promise<boolean> {
   return result.count > 0;
 }
 
-// Verilen URL'lerden kayıtlı olanların isimleri (geçmiş listesi ve detay sayfası için)
+// Names of the saved ones among the given URLs (for the history list and the detail page)
 export async function targetNamesFor(urls: string[]): Promise<Map<string, string>> {
   if (urls.length === 0) return new Map();
 
@@ -86,7 +86,7 @@ export async function targetNamesFor(urls: string[]): Promise<Map<string, string
   return new Map(targets.map((t) => [t.url, t.name]));
 }
 
-// İsmi aramayla eşleşen kayıtların URL'leri (geçmişte isimle arama için)
+// URLs of entries whose name matches the search (for searching history by name)
 export async function urlsMatchingName(search: string): Promise<string[]> {
   if (!search) return [];
 
@@ -97,7 +97,7 @@ export async function urlsMatchingName(search: string): Promise<string[]> {
   return targets.map((t) => t.url);
 }
 
-// Test bitince "rehbere kaydet" önerisi için: URL kayıtlı mı, kaç kez test edilmiş?
+// For the "save to target book" suggestion after a test: is the URL saved, how many times has it been tested?
 export async function suggestionFor(url: string) {
   const [saved, runCount] = await Promise.all([
     prisma.savedTarget.findUnique({ where: { url }, select: { id: true } }),

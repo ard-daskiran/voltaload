@@ -1,13 +1,13 @@
-// Volta sözlüğü ve biçimlendirme araçları.
-// Arayüzdeki metinler burada TR ve EN olarak tutulur, kodda t("anahtar") ile kullanılır.
-// HTML'de data-i18n="anahtar" ile işaretlenen öğeler applyTranslations() ile doldurulur.
+// Volta's dictionary and formatting helpers.
+// UI texts are kept here in TR and EN and used in code with t("key").
+// Elements marked with data-i18n="key" in HTML are filled by applyTranslations().
 //
-// Dil: ilk açılışta tarayıcının dili (Türkçe ise TR, değilse EN), sonra kullanıcının seçimi hatırlanır.
-// Dil değişince sayfa yenilenir: ekrandaki her şey baştan, yeni dille kurulur.
+// Language: on first visit the browser's language (TR if Turkish, otherwise EN), then the user's choice is remembered.
+// When the language changes the page reloads: everything on screen is rebuilt in the new language.
 
 const MESSAGES = {
     tr: {
-        // --- Üst menü ---
+        // --- Top menu ---
         "nav.dashboard": "DASHBOARD",
         "nav.history": "TEST HISTORY",
         "nav.language": "Dil",
@@ -35,7 +35,7 @@ const MESSAGES = {
         "form.start": "TESTİ BAŞLAT",
         "form.stop": "TESTİ DURDUR",
 
-        // --- Durum mesajları ---
+        // --- Status messages ---
         "state.ready": "Hazır.",
         "state.starting": "Test başlatılıyor...",
         "state.running": "Test çalışıyor.",
@@ -55,7 +55,7 @@ const MESSAGES = {
         "connection.reconnected": "Bağlantı yeniden kuruldu.",
         "connection.reload": "Sayfayı yenile",
 
-        // --- Grafik ---
+        // --- Chart ---
         "chart.title": "Canlı Ölçüm",
         "chart.reset": "SIFIRLA",
         "chart.lag": "Volta gecikmesi {ms} ms",
@@ -79,7 +79,7 @@ const MESSAGES = {
         "chart.help.warmup": "Testin ilk anlarındaki kısa yükselme bağlantıların kurulmasından kaynaklanır, normaldir.",
         "chart.help.controls": "Fare tekerleğiyle yakınlaştır, sürükleyerek kaydır. Çizgi adlarına tıklayarak gizle ya da göster.",
 
-        // --- Metrik kartları ---
+        // --- Metric cards ---
         "metric.avg": "ORTALAMA",
         "metric.requests": "İSTEK",
         "metric.min": "EN DÜŞÜK",
@@ -87,7 +87,7 @@ const MESSAGES = {
         "metric.live": "Anlık:",
         "unit.count": "adet",
 
-        // --- Durum kodları ve günlük ---
+        // --- Status codes and log ---
         "statusCard.title": "Durum Kodu Dağılımı",
         "statusCard.empty": "Henüz veri yok.",
         "statusCard.total": "{count} yanıt",
@@ -96,7 +96,7 @@ const MESSAGES = {
         "log.second": "{n}. sn",
 
         "dashboard.pageTitle": "Volta — Yerel Yük Testi",
-        // --- Detay sayfası ---
+        // --- Detail page ---
         "detail.pageTitle": "Volta — Test Detayı",
         "detail.back": "Geçmiş",
         "detail.settings": "Test Ayarları",
@@ -132,7 +132,7 @@ const MESSAGES = {
         "runStatus.INTERRUPTED": "Yarıda kaldı",
 
 
-        // --- Geçmiş listesi ---
+        // --- History list ---
         "history.pageTitle": "Volta — Test Geçmişi",
         "history.title": "Test Geçmişi",
         "history.subtitle": "Geçmiş yük testlerini, gecikme ve RPS değerlerini incele.",
@@ -160,7 +160,7 @@ const MESSAGES = {
         "history.p95": "p95: {value}",
 
 
-        // --- Onay pencereleri ---
+        // --- Confirmation dialogs ---
         "dialog.cancel": "VAZGEÇ",
         "dialog.typeToConfirm": "Onaylamak için {text} yaz:",
         "deleteTest.button": "TESTİ SİL",
@@ -186,7 +186,7 @@ const MESSAGES = {
 
 
 
-        // --- Bilgi kutuları ---
+        // --- Info boxes ---
         "hint.graphPrefix": "Grafikte: {text}",
         "hint.avg.text": "Cevap gelen ve zaman aşımına uğrayan isteklerin ortalama süresi. Bağlantı hataları dahil değil, çünkü anında dönüp ortalamayı yapay olarak düşürürler.",
         "hint.avg.graph": "sarı çizgi",
@@ -207,7 +207,7 @@ const MESSAGES = {
         "hint.duration.text": "İlk isteğin gönderilmesinden son cevabın gelmesine kadar geçen süre. Ayarlanan süreden biraz uzun olabilir, çünkü süre dolunca yolda olan isteklerin cevabı beklenir (en fazla 2,5 sn).",
 
 
-        // --- URL rehberi ---
+        // --- Target book ---
         "book.open": "Kayıtlı hedefler",
         "book.title": "Kayıtlı Hedefler",
         "book.searchPlaceholder": "İsim ya da URL ara...",
@@ -237,7 +237,7 @@ const MESSAGES = {
         "suggest.save": "KAYDET",
 
 
-        // --- Analiz ---
+        // --- Analysis ---
         "analysis.title": "Analiz",
         "analysis.loading": "Analiz hazırlanıyor...",
         "analysis.pending": "Analiz test bitince hazırlanacak.",
@@ -341,7 +341,7 @@ const MESSAGES = {
         "steps.col.state": "Durum",
 
 
-        // --- Rapor ---
+        // --- Report ---
         "report.pageTitle": "Volta — Yük Testi Raporu",
         "report.button": "RAPOR AL",
         "report.runningHint": "Rapor test bitince alınabilir.",
@@ -379,19 +379,19 @@ const MESSAGES = {
 
 
 
-        // --- Cevap gelmeyen isteklerin kısa adları ---
+        // --- Short names for requests with no response ---
         "status.name.TIMEOUT": "Zaman aşımı",
         "status.name.CONNECTION_REFUSED": "Bağlantı reddedildi",
         "status.name.CONNECTION_RESET": "Bağlantı koptu",
         "status.name.NETWORK_ERROR": "Ağ hatası",
 
-        // --- Bilgi kutusundaki etiketler ---
+        // --- Labels in the info box ---
         "status.tag.success": "Başarılı",
         "status.tag.redirect": "Yönlendirme · takip edilmez",
         "status.tag.clientError": "Sunucu sağlıklı · hata sayılmaz",
         "status.tag.serverError": "Sunucu hatası · hata oranına dahil",
 
-        // --- Durum kodu açıklamaları ---
+        // --- Status code descriptions ---
         "status.200": "Başarılı. Sunucu isteği işledi.",
         "status.201": "Oluşturuldu. Sunucu yeni bir kayıt oluşturdu.",
         "status.204": "Başarılı, içerik yok.",
@@ -421,7 +421,7 @@ const MESSAGES = {
         "status.unknown": "Bilinmeyen durum.",
 
 
-        // --- Sunucu hataları (kodlar: src/errors.ts) ---
+        // --- Server errors (codes: src/errors.ts) ---
         "error.INVALID_URL": "Geçerli bir URL girilmeli.",
         "error.INVALID_METHOD": "Yöntem GET ya da POST olmalı.",
         "error.INVALID_RPS": "Saniyede istek {min} ile {max} arasında bir tam sayı olmalı.",
@@ -897,18 +897,18 @@ const MESSAGES = {
     },
 };
 
-// --- Dil seçimi ---
+// --- Language selection ---
 
 const LANGUAGE_STORAGE_KEY = "volta-lang";
 const SUPPORTED_LANGUAGES = ["tr", "en"];
 
-// Kayıtlı seçim varsa o, yoksa tarayıcının dili
+// The saved choice if there is one, otherwise the browser's language
 function detectLanguage() {
     try {
         const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
         if (SUPPORTED_LANGUAGES.includes(saved)) return saved;
     } catch {
-        // Tarayıcı depolamaya izin vermiyorsa tarayıcının diline bak
+        // If the browser doesn't allow storage, fall back to the browser's language
     }
     return (navigator.language || "").toLowerCase().startsWith("tr") ? "tr" : "en";
 }
@@ -920,14 +920,14 @@ export function getLanguage() {
     return currentLanguage;
 }
 
-// Dil değişmeden hemen önce çalışacak işler (örneğin formdaki yazılmış değerleri kaydetmek)
+// Tasks to run right before the language changes (e.g. saving the values typed into the form)
 const beforeSwitchHandlers = [];
 
 export function onBeforeLanguageSwitch(handler) {
     beforeSwitchHandlers.push(handler);
 }
 
-// Dili değiştir ve sayfayı yenile (aynı dil seçildiyse bir şey yapmaz)
+// Change the language and reload the page (does nothing if the same language is chosen)
 export function switchLanguage(lang) {
     if (!SUPPORTED_LANGUAGES.includes(lang) || lang === currentLanguage) return;
 
@@ -942,7 +942,7 @@ export function switchLanguage(lang) {
     try {
         localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
     } catch {
-        // Kaydedilemezse dil değişmez, sayfa yine aynı dille açılır
+        // If it can't be saved the language doesn't change; the page opens in the same language again
     }
     window.location.reload();
 }
@@ -951,8 +951,8 @@ export function getLocale() {
     return getLanguage() === "en" ? "en-US" : "tr-TR";
 }
 
-// Anahtara karşılık gelen metni döndürür. {isim} biçimindeki yer tutucular params'tan doldurulur.
-// Seçili dilde yoksa Türkçe'ye, orada da yoksa anahtarın kendisine düşer (eksik çeviri hemen göze çarpsın).
+// Returns the text for the key. Placeholders like {name} are filled from params.
+// Falls back to Turkish if missing in the selected language, then to the key itself (so a missing translation stands out).
 export function t(key, params = {}) {
     const lang = getLanguage();
     let text = MESSAGES[lang]?.[key] ?? MESSAGES.tr[key] ?? key;
@@ -964,7 +964,7 @@ export function t(key, params = {}) {
     return text;
 }
 
-// Sayıyı seçili dilin biçiminde yazar (TR: 1.250,5 · EN: 1,250.5). Değer yoksa "—".
+// Formats a number in the selected language's style (TR: 1.250,5 · EN: 1,250.5). "—" if there's no value.
 export function formatNumber(value, digits) {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
 
@@ -976,20 +976,20 @@ export function formatNumber(value, digits) {
     return Number(value).toLocaleString(getLocale(), options);
 }
 
-// Gecikme: her zaman tam sayı milisaniye
+// Latency: always whole milliseconds
 export function formatMs(value) {
     if (value === null || value === undefined) return "—";
     return `${formatNumber(Math.round(value))} ms`;
 }
 
-// Yüzde: oran (0–1) verilir. TR: %12,5 · EN: 12.5%
+// Percent: takes a ratio (0–1). TR: %12,5 · EN: 12.5%
 export function formatPercent(ratio, digits = 1) {
     if (ratio === null || ratio === undefined || Number.isNaN(Number(ratio))) return "—";
     const value = formatNumber(ratio * 100, digits);
     return getLanguage() === "en" ? `${value}%` : `%${value}`;
 }
 
-// data-i18n ile işaretli öğelerin metnini sözlükten doldurur
+// Fills the text of elements marked with data-i18n from the dictionary
 export function applyTranslations(root = document) {
     root.querySelectorAll("[data-i18n]").forEach((el) => {
         el.textContent = t(el.dataset.i18n);

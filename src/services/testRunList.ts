@@ -1,6 +1,6 @@
-// Geçmiş listesi: sayfalama, yöntem filtresi, arama ve sıralama.
-// Sadece TestRun tablosunu okur, sonuç satırlarına dokunmaz.
-// Arama URL'de ve rehberdeki isimlerde yapılır. Kayıtlı URL'lere isim eklenir (targetName).
+// History list: pagination, method filter, search and sorting.
+// Reads only the TestRun table, never touches the result rows.
+// Search covers the URL and the names in the target book. Saved URLs get their name attached (targetName).
 
 import { prisma } from "../db/prisma.js";
 import { serializeRun } from "./testRunFormat.js";
@@ -23,7 +23,7 @@ function toPositiveInt(value: unknown, fallback: number): number {
   return Number.isInteger(n) && n >= 1 ? n : fallback;
 }
 
-// Adres parametrelerini güvenli değerlere çevirir. Geçersiz değerler varsayılana düşer, hata verilmez.
+// Converts query parameters to safe values. Invalid values fall back to the default; no error is raised.
 export function parseListQuery(query: Record<string, unknown>): ListQuery {
   return {
     page: toPositiveInt(query.page, 1),
@@ -35,7 +35,7 @@ export function parseListQuery(query: Record<string, unknown>): ListQuery {
 }
 
 export async function listTestRuns(q: ListQuery) {
-  // Aranan metin bir kaydın isminde geçiyorsa o kaydın URL'sindeki testler de bulunsun
+  // If the search text appears in an entry's name, also find the tests for that entry's URL
   const urlsByName = q.search ? await urlsMatchingName(q.search) : [];
 
   const where = {
@@ -50,7 +50,7 @@ export async function listTestRuns(q: ListQuery) {
       : {}),
   };
 
-  // Toplam sayı ve o sayfanın kayıtları tek seferde
+  // Total count and that page's records in one go
   const [total, runs] = await prisma.$transaction([
     prisma.testRun.count({ where }),
     prisma.testRun.findMany({

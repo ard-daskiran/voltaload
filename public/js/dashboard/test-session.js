@@ -1,16 +1,16 @@
-// Test oturumu: sunucuya başlat/durdur istekleri, Socket.io canlı akışı ve sayfa yenilenince yeniden bağlanma.
-// Socket.io kütüphanesi index.html'de normal script olarak yüklenir (global "io").
+// Test session: start/stop requests to the server, the Socket.io live stream and reconnecting after a page reload.
+// The Socket.io library is loaded in index.html as a regular script (global "io").
 
 import { apiErrorMessage } from "../core/api-error.js";
 
-// onConnectionLost(testRunning) / onConnectionRestored(): Volta'yla canlı bağlantı koptu / kuruldu
+// onConnectionLost(testRunning) / onConnectionRestored(): the live connection to Volta was lost / established
 export function createTestSession({ onWindow, onDone, onError, onConnectionLost, onConnectionRestored }) {
     const socket = io();
 
     let activeTestRunId = null;
-    let backfilling = false; // Yeniden bağlanırken geçmiş dilimler işlenene kadar canlı paketleri beklet
+    let backfilling = false; // While reconnecting, hold live batches until past windows are processed
     let pendingWindows = [];
-    let lastElapsed = 0; // Yeniden bağlanırken aynı dilimin iki kez işlenmesini önler
+    let lastElapsed = 0; // Prevents the same window from being processed twice when reconnecting
 
     function dispatch(d) {
         lastElapsed = Math.max(lastElapsed, d.elapsedSeconds);
@@ -46,20 +46,20 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
         onError(apiErrorMessage(data, "error.TEST_UNEXPECTED_ERROR"));
     });
 
-    // Bağlantı kısa süreliğine koparsa Socket.io kendiliğinden yeniden bağlanır, odaya tekrar katıl
+    // If the connection drops briefly Socket.io reconnects by itself; join the room again
     socket.on("connect", () => {
         if (activeTestRunId) socket.emit("join-test", activeTestRunId);
         onConnectionRestored?.();
     });
 
-    // Volta kapandı ya da bağlantı koptu (Socket.io arka planda yeniden bağlanmayı dener)
+    // Volta shut down or the connection was lost (Socket.io keeps trying to reconnect in the background)
     socket.on("disconnect", () => {
         onConnectionLost?.(Boolean(activeTestRunId));
     });
 
-    // --- Dışarıya açık fonksiyonlar ---
+    // --- Public functions ---
 
-    // Testi başlatır. Başarılıysa { ok: true, testRunId }, değilse { ok: false, error } ya da { ok: false, unreachable: true }
+    // Starts the test. On success { ok: true, testRunId }, otherwise { ok: false, error } or { ok: false, unreachable: true }
     async function start(payload) {
         let response;
         try {
@@ -69,12 +69,12 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
                 body: JSON.stringify(payload),
             });
         } catch (err) {
-            // İstek hiç gidemedi: Volta kapalı
+            // The request never went out: Volta is down
             console.error(err);
             return { ok: false, unreachable: true };
         }
 
-        // Cevap geldi ama JSON değilse (beklenmez) bu "ulaşılamadı" değil, "başlatılamadı"
+        // If a response arrived but isn't JSON (not expected), that's "couldn't start", not "unreachable"
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.testRunId) {
             return { ok: false, error: apiErrorMessage(data, "error.START_FAILED") };
@@ -82,12 +82,12 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
         return { ok: true, testRunId: data.testRunId };
     }
 
-    // Başlatılan testin canlı akışını dinlemeye başla (ekran hazırlandıktan sonra çağrılır)
+    // Start listening to the started test's live stream (called after the screen is prepared)
     function follow(testRunId) {
         join(testRunId);
     }
 
-    // Durdurma isteği. Arayüz, sunucudan gelen "done" mesajıyla kilidi açar.
+    // Stop request. The UI unlocks on the "done" message from the server.
     async function stop() {
         if (!activeTestRunId) return { ok: true };
         try {
@@ -99,9 +99,9 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
         }
     }
 
-    // Sayfa açılınca çalışan bir test varsa ona yeniden bağlan.
-    // onActive(active): ekranı hazırlamak için, dilimler işlenmeden önce çağrılır.
-    // Dönüş: "none" (çalışan test yok), "resumed" (bağlanıldı), "finished" (bu arada bitmiş)
+    // When the page opens, reconnect to a running test if there is one.
+    // onActive(active): called to prepare the screen, before the windows are processed.
+    // Returns: "none" (no running test), "resumed" (reconnected), "finished" (ended in the meantime)
     async function resume(onActive) {
         let active = null;
 
@@ -116,7 +116,7 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
 
         onActive(active);
 
-        // Önce odaya katıl ve canlı paketleri beklet, sonra o ana kadarki dilimleri işle, en son bekleyenleri
+        // First join the room and hold live batches, then process the windows so far, and finally the held ones
         backfilling = true;
         pendingWindows = [];
         join(active.testRunId);
@@ -126,10 +126,10 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
             const { windows } = await response.json();
             for (const w of windows) dispatch(w);
         } catch (err) {
-            console.error("Geçmiş dilimler alınamadı:", err);
+            console.error("Could not fetch past windows:", err);
         } finally {
             backfilling = false;
-            // Doldurmanın zaten kapsadığı canlı paketleri atla
+            // Skip live batches already covered by the backfill
             const cutoff = lastElapsed;
             for (const w of pendingWindows) {
                 if (w.elapsedSeconds > cutoff) dispatch(w);
@@ -137,7 +137,7 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
             pendingWindows = [];
         }
 
-        // Bu arada test bittiyse "done" mesajı kaçmış olabilir, kontrol et
+        // If the test ended in the meantime the "done" message may have been missed; check
         try {
             const response = await fetch("/api/test-run/active");
             const { active: stillActive } = await response.json();
@@ -146,7 +146,7 @@ export function createTestSession({ onWindow, onDone, onError, onConnectionLost,
                 return "finished";
             }
         } catch {
-            // Sunucuya ulaşılamadıysa canlı akış zaten durumu bildirecek
+            // If the server couldn't be reached, the live stream will report the state anyway
         }
 
         return "resumed";

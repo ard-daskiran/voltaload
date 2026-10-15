@@ -1,5 +1,5 @@
-// Testin durumu (Tamamlandı, Durduruldu...) için renk ve ad.
-// Bu, sunucunun sağlığı değil testin kendi durumu: hata dolu bir test de sonuna kadar çalıştıysa "Tamamlandı" olur.
+// Color and name for the test's status (Completed, Stopped...).
+// This is the test's own status, not the server's health: a test full of errors that ran to the end is still "Completed".
 
 import { t } from "../core/i18n.js";
 

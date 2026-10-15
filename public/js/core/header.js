@@ -1,5 +1,5 @@
-// Üst menü: bütün sayfalarda aynı. Sayfadaki <div id="app-header" data-active="..."> yer tutucusunu doldurur.
-// data-active: "dashboard" ya da "history" (detay sayfası geçmişin altında sayılır)
+// Top menu: the same on every page. Fills the page's <div id="app-header" data-active="..."> placeholder.
+// data-active: "dashboard" or "history" (the detail page counts as part of history)
 
 import { getLanguage, switchLanguage } from "./i18n.js";
 
@@ -52,7 +52,7 @@ export function renderHeader() {
         <nav class="hidden md:flex items-center h-full gap-6">${links}</nav>
       </div>
 
-      <!-- Dil seçimi: değişince sayfa yenilenir -->
+      <!-- Language selection: the page reloads when it changes -->
       <div id="language-switch" role="group" data-i18n-title="nav.language"
            class="flex items-center border border-border-subtle rounded-full p-0.5 font-label-caps text-[11px]">
         ${languageButtons}

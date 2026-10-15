@@ -1,5 +1,5 @@
-// Saniyelik toplama: 0,2 sn'lik dilimleri biriktirir, bir saniye dolunca onSecond'u çağırır.
-// 0 · 0,2 · 0,4 · 0,6 · 0,8 → 1. saniye (0–1 arası)
+// Per-second aggregation: collects 0.2 s windows and calls onSecond when a second is complete.
+// 0 · 0.2 · 0.4 · 0.6 · 0.8 → second 1 (between 0–1)
 
 import { DEFAULT_WINDOW_SECONDS, roundTime, isWholeSecond } from "../chart/chart-time.js";
 import { statusCategory } from "../status/status-info.js";
@@ -14,12 +14,12 @@ function freshSecond(start) {
         latencyCount: 0,
         max: null,
         statusCounts: {},
-        targetSum: 0, // Dilimlerin hedef RPS'lerinin toplamı (ortalaması saniyenin hedefi)
+        targetSum: 0, // Sum of the windows' target RPS (their average is the second's target)
         windowCount: 0,
     };
 }
 
-// onSecond(endSecond, saniye): biten saniyenin numarası (1, 2, 3...) ve toplamları
+// onSecond(endSecond, second): the number of the finished second (1, 2, 3...) and its totals
 export function createSecondAggregator({ onSecond }) {
     let current = freshSecond(0);
     let lastTarget = 0;
@@ -27,19 +27,19 @@ export function createSecondAggregator({ onSecond }) {
     function finalize(s) {
         const errorCodes = Object.keys(s.statusCounts).filter((code) => statusCategory(code) === "serverError");
 
-        // Hiç dilim gelmediyse hedef değişmemiştir, bir öncekini kullan
+        // If no windows arrived the target hasn't changed; use the previous one
         const target = s.windowCount > 0 ? Math.round(s.targetSum / s.windowCount) : lastTarget;
         lastTarget = target;
 
         onSecond(s.start + 1, { ...s, errorCodes, target });
     }
 
-    // x: dilimin grafikteki başlangıç zamanı
+    // x: the window's start time on the chart
     function add(x, d) {
         const width = d.windowSeconds ?? DEFAULT_WINDOW_SECONDS;
         const start = Math.floor(x + 1e-6);
 
-        // Hiç dilimi gelmeyen saniyeler atlanmasın: 0 istek olarak kapat
+        // Don't skip seconds that got no windows: close them with 0 requests
         while (current.start < start) {
             finalize(current);
             current = freshSecond(current.start + 1);
@@ -60,14 +60,14 @@ export function createSecondAggregator({ onSecond }) {
             s.statusCounts[code] = (s.statusCounts[code] || 0) + count;
         }
 
-        // Dilim tam saniyede bitiyorsa (0,8 + 0,2 = 1,0) saniye tamamlandı
+        // If the window ends on a whole second (0.8 + 0.2 = 1.0) the second is complete
         if (isWholeSecond(roundTime(x + width))) {
             finalize(current);
             current = freshSecond(start + 1);
         }
     }
 
-    // Test bittiğinde yarım kalan saniye varsa onu da kapat (süre dolduktan sonra gelen son cevaplar)
+    // When the test ends, close any partial second too (last responses that arrived after the time was up)
     function flush() {
         if (current.total > 0) {
             finalize(current);

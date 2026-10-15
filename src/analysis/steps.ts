@@ -1,4 +1,4 @@
-// Kademe tablosu: her kademe ayrı değerlendirilir. Sabit yükte bütün test tek bir "kademe" sayılır.
+// Step table: each step is evaluated separately. Under constant load the whole test counts as a single "step".
 
 import { THRESHOLDS as T } from "./thresholds.js";
 import { classifyGroup, type HealthState, type Reason } from "./classify.js";
@@ -8,10 +8,10 @@ import type { LoadProfile } from "../engine/scheduler.js";
 import { targetRpsAt } from "../engine/scheduler.js";
 
 export interface StepRange {
-  index: number; // 1'den başlar
-  from: number; // Başlangıç saniyesi (dahil)
-  to: number; // Bitiş saniyesi (hariç)
-  rps: number; // Kademenin hedef RPS'i (formda ve zamanlayıcıda görünen)
+  index: number; // Starts at 1
+  from: number; // Start second (inclusive)
+  to: number; // End second (exclusive)
+  rps: number; // The step's target RPS (as seen in the form and the scheduler)
 }
 
 export interface StepResult {
@@ -29,7 +29,7 @@ export interface StepResult {
   trend: { from: number; to: number } | null;
 }
 
-// Her saniye, ortası hangi kademeye düşüyorsa o kademeye aittir (zamanlayıcıyla aynı mantık)
+// Each second belongs to the step its midpoint falls in (same logic as the scheduler)
 export function stepRanges(duration: number, profile: LoadProfile, targetRps: number): StepRange[] {
   if (profile.type !== "STEPPED") return [{ index: 1, from: 0, to: duration, rps: targetRps }];
 
@@ -55,15 +55,15 @@ export function analyzeSteps(seconds: SecondStats[], ranges: StepRange[], baseli
   const results: StepResult[] = [];
 
   for (const range of ranges) {
-    // Son kademe analizin sonuna kadar uzanır (sonuçlar gönderildikleri saniyeye yazıldığı için
-    // test süresinden sonra saniye oluşmaz; bu sadece güvence)
+    // The last step extends to the end of the analysis (since results are placed in the second they were sent,
+    // no seconds occur after the test duration; this is just a safeguard)
     const isLast = range === ranges[ranges.length - 1];
     const to = isLast ? Infinity : range.to;
 
     let group = seconds.filter((s) => s.index >= range.from && s.index < to);
-    if (group.length === 0) continue; // Test bu kademeye gelmeden durduruldu
+    if (group.length === 0) continue; // The test was stopped before reaching this step
 
-    // Isınma saniyesi, yeterince saniye kalıyorsa hariç tutulur
+    // The warm-up second is excluded if enough seconds remain
     const warmed = group.filter((s) => s.index >= T.warmupSeconds);
     if (warmed.length >= 2) group = warmed;
 

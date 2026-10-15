@@ -1,16 +1,16 @@
 // recommendations.ts
-// Öneriler: hangi durumda ne yapılmalı. Arayüz her türün cümlesini sözlükten kurar.
-// Sonuçlar yanıltıcıysa (cevapların çoğu yönlendirme / 4xx / 429, neredeyse hepsi zaman aşımı
-// ya da isteklerin çoğu bağlantı hatası) kapasite önerileri çıkmaz: o durumda sunucunun gerçek
-// kapasitesi hakkında bir şey söylenemez. Kararlı ama yavaş sunucuda da çıkmaz: sorun yük değil,
-// isteğin kendisi; yükle oynamak onu hızlandırmaz.
+// Recommendations: what to do in which situation. The UI builds each type's sentence from the dictionary.
+// If the results are misleading (most responses are redirects / 4xx / 429, almost all are timeouts
+// or most requests are connection errors) no capacity recommendations are given: in that case nothing can be said
+// about the server's real capacity. They're also skipped for a slow but stable server: the problem is the request
+// itself, not the load; changing the load won't make it faster.
 
 import { THRESHOLDS as T } from "./thresholds.js";
 import type { GroupStats } from "./classify.js";
 import type { Verdict } from "./verdict.js";
 import { MAX_TARGET_RPS } from "../config.js";
 
-// Önerilen takip testi (arayüzde "Bu testi çalıştır" ile başlatılabilir)
+// Suggested follow-up test (can be started from the UI with "Run this test")
 interface FollowUpTest {
   loadProfile: "STEPPED";
   targetRps: number;
@@ -54,28 +54,28 @@ export function buildRecommendations(totals: GroupStats, verdict: Verdict): Reco
   const present = (codes: string[]) => codes.filter((c) => (totals.statusCounts[c] ?? 0) / totals.total >= T.recommend.codeShare);
   const codes = Object.keys(totals.statusCounts);
 
-  // Hız sınırlayıcı: cevapların çoğu 429 ise test, sunucunun kapasitesini değil sınırlayıcının ayarını ölçtü
+  // Rate limiter: if most responses are 429, the test measured the limiter's setting, not the server's capacity
   const rateLimited = share(["429"]) >= T.recommend.rateLimitedShare;
 
-  // Sunucu kendini koruyor: aşırı yük (503) ya da hız sınırlayıcı (429).
-  // 429 çoğunluktaysa "aşırı yük" denmez, aşağıda kendi uyarısı var.
+  // The server is protecting itself: overload (503) or rate limiter (429).
+  // If 429 is the majority, don't say "overload"; it has its own warning below.
   const overloadCodes = present(rateLimited ? ["503"] : ["429", "503"]);
   if (overloadCodes.length > 0) list.push({ type: "overload", codes: overloadCodes });
 
-  // Zaman aşımı: neredeyse hepsiyse sorun yük değil, isteğin kendisi
+  // Timeouts: if almost all requests time out, the problem is the request itself, not the load
   const timeoutShare = totals.timeouts / totals.total;
   const tooSlow = timeoutShare >= T.recommend.timeoutDominantShare;
   if (tooSlow) list.push({ type: "tooSlow" });
   else if (timeoutShare >= T.recommend.codeShare) list.push({ type: "timeouts" });
 
-  // Uygulama hataları (503 hariç 5xx)
+  // Application errors (5xx excluding 503)
   const appErrors = present(codes.filter((c) => Number(c) >= 500 && c !== "503"));
   if (appErrors.length > 0) list.push({ type: "serverErrors", codes: appErrors.sort() });
 
   if (totals.connectionErrorRate >= T.connectionErrorRate) list.push({ type: "connection" });
   const connectionDominant = totals.connectionErrorRate >= T.recommend.connectionDominantShare;
 
-  // Çoğu istek hızlı, arada çok yavaş olanlar var (fark hem oran hem milisaniye olarak belirgin olmalı)
+  // Most requests are fast, with occasional very slow ones (the gap must be clear both as a ratio and in milliseconds)
   if (
     totals.p95 !== null &&
     totals.p99 !== null &&
@@ -86,7 +86,7 @@ export function buildRecommendations(totals: GroupStats, verdict: Verdict): Reco
     list.push({ type: "tailLatency", p95: totals.p95, p99: totals.p99 });
   }
 
-  // Test ayarlarıyla ilgili uyarılar (429 hariç: onu sunucu bilinçli olarak döndürüyor, kendi uyarısı var)
+  // Warnings about the test settings (excluding 429: the server returns it on purpose, it has its own warning)
   const clientShare = share(codes.filter((c) => Number(c) >= 400 && Number(c) < 500 && c !== "429"));
   const clientMajority = clientShare >= T.recommend.clientErrorShare;
   if (clientMajority) list.push({ type: "clientErrors", share: clientShare });
@@ -100,7 +100,7 @@ export function buildRecommendations(totals: GroupStats, verdict: Verdict): Reco
 
   if (verdict.slowButStable && totals.p95 !== null) list.push({ type: "slowButStable", p95: totals.p95 });
 
-  // Kapasiteyle ilgili sonraki adım (sonuçlar yanıltıcı değilse)
+  // Next step about capacity (if the results aren't misleading)
   const misleading =
     clientMajority || redirectMajority || rateLimited || tooSlow || connectionDominant || verdict.slowButStable;
   if (!misleading) {
@@ -110,10 +110,10 @@ export function buildRecommendations(totals: GroupStats, verdict: Verdict): Reco
     } else if (c.kind === "below") {
       list.push({ type: "findCapacity", rps: c.rps, test: followUp(c.rps) });
     } else if (verdict.state !== "HEALTHY") {
-      // Kapasiteye sayıldı ama gecikme arttı ("Sınırda"): "rahat kaldırdı" denmez, sınır yakında olabilir
+      // Counted toward capacity but latency rose ("Borderline"): don't say "handled it easily", the limit may be close
       list.push({ type: "nearLimit", rps: c.rps, test: followUp(c.rps * T.followUp.nearLimitFactor) });
     } else {
-      // Sınır görülmedi: Volta'nın üst sınırına ulaşıldıysa önerilecek test yok
+      // No limit seen: if Volta's upper limit was reached, there's no test to suggest
       list.push({ type: "noLimitFound", rps: c.rps, test: c.rps >= MAX_TARGET_RPS ? null : followUp(c.rps * 2) });
     }
   }

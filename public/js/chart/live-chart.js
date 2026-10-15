@@ -1,5 +1,5 @@
-// Canlı grafik: kurulum, dilim ekleme, saniye noktaları, kapanış.
-// Görsel sabitler, animasyon, eklentiler, bilgi kutusu ve açıklama satırı ayrı dosyalarda.
+// Live chart: setup, adding windows, second points, finishing.
+// Visual constants, animation, plugins, tooltip and legend row are in separate files.
 
 import { t, formatNumber } from "../core/i18n.js";
 import { statusCategory } from "../status/status-info.js";
@@ -11,28 +11,28 @@ import { createChartTooltip } from "./chart-tooltip.js";
 import { bindLegend, updateLegendButtons } from "./chart-legend.js";
 
 
-// --- Durum ---
+// --- State ---
 let liveChart = null;
 let tooltip = null;
 let windowSeconds = DEFAULT_WINDOW_SECONDS;
-let windowMeta = []; // Her dilimin ayrıntıları, gecikme veri setleriyle aynı sırada
-let windowIndexByX = new Map(); // "7.4" → windowMeta içindeki sırası
-let secondTotals = new Map(); // biten saniye (3) → 2–3 sn arasının istek sayıları
-let lastLatency = null; // Son gerçek ortalama (bağlantı hatası çizgisi bu seviyeden devam eder)
+let windowMeta = []; // Details of each window, in the same order as the latency datasets
+let windowIndexByX = new Map(); // "7.4" → its position in windowMeta
+let secondTotals = new Map(); // finished second (3) → request counts for 2–3 s
+let lastLatency = null; // Last real average (the connection error line continues from this level)
 let inOutage = false;
 let initialMaxSeconds = 10;
 let userZoomed = false;
 let lastX = 0;
 
-// Kullanıcının açıp kapattığı çizgiler: sayfa açık kaldığı sürece hatırlanır, yeni test grafiği onlarla kurulur.
-// Dokunulmayan çizgiler varsayılanda kalır (RPS çizgileri sabit yükte kapalı, kademelide açık).
-const visibilityChoice = new Map(); // çizgi → görünür mü
-let currentDefaults = null; // mevcut grafiğin varsayılan görünürlükleri
+// Lines the user toggled: remembered while the page stays open; a new test's chart is built with them.
+// Untouched lines keep their default (RPS lines are off for constant load, on for stepped).
+const visibilityChoice = new Map(); // line → is it visible
+let currentDefaults = null; // default visibilities of the current chart
 
 const animator = createChartAnimator();
 const revealPlugin = createRevealPlugin(() => animator.revealedX());
 
-// Bilgi kutusu bir zamandaki dilimin bilgilerini buradan alır
+// The tooltip gets a window's info at a given time from here
 function lookup(x) {
     const index = windowIndexByX.get(xKey(x));
     return {
@@ -41,7 +41,7 @@ function lookup(x) {
     };
 }
 
-// Tam saniye noktalarının görünümü (ortalama ve bağlantı hatası çizgisi ortak kullanır)
+// Appearance of whole-second points (shared by the average and connection error lines)
 function secondDotOptions(shouldShow, colorFor) {
     return {
         pointRadius: (ctx) => (shouldShow(ctx) ? SECOND_DOT.radius : 0),
@@ -55,7 +55,7 @@ function secondDotOptions(shouldShow, colorFor) {
     };
 }
 
-// Yeni bir noktanın yatay eksen ve yakınlaştırma sınırlarına etkisi
+// Effect of a new point on the horizontal axis and zoom limits
 function extendRange(x) {
     liveChart.options.plugins.zoom.limits.x.max = Math.max(initialMaxSeconds, x);
     if (!userZoomed && x > liveChart.options.scales.x.max) {
@@ -63,12 +63,12 @@ function extendRange(x) {
     }
 }
 
-// --- Dışarıya açık fonksiyonlar ---
+// --- Public functions ---
 
 export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
     const canvas = document.getElementById("chart");
 
-    // Eski grafik silinmeden önce: kullanıcının varsayılandan farklı bıraktığı çizgileri hatırla
+    // Before the old chart is destroyed: remember the lines the user left different from the default
     if (liveChart && currentDefaults) {
         for (const [series, visibleByDefault] of currentDefaults) {
             const visible = liveChart.isDatasetVisible(series);
@@ -94,7 +94,7 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
     lastX = 0;
     initialMaxSeconds = Math.min(durationSeconds, 10);
 
-    // Kademeli testte RPS çizgileri varsayılan açık (merdiven ve başarılı RPS asıl görüntü)
+    // In a stepped test the RPS lines are on by default (the staircase and successful RPS are the main view)
     const showRps = profileType === "STEPPED";
     currentDefaults = new Map([
         [SERIES.AVG, true],
@@ -105,7 +105,7 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
         [SERIES.CONNECTION, true],
     ]);
 
-    // Kullanıcı seçtiyse onun seçimi, yoksa varsayılan
+    // The user's choice if they made one, otherwise the default
     const hiddenOf = (series) => !(visibilityChoice.get(series) ?? currentDefaults.get(series));
 
     const line = (label, color, extra = {}) => ({
@@ -116,7 +116,7 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
         borderWidth: 1.5,
         pointRadius: 0,
         pointHoverRadius: 4,
-        // Yumuşak ama ölçülen noktaların dışına taşmayan çizgi
+        // A smooth line that doesn't overshoot the measured points
         cubicInterpolationMode: "monotone",
         fill: false,
         spanGaps: false,
@@ -132,12 +132,12 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
                     borderWidth: 2,
                     fill: "origin",
                     backgroundColor: avgFill,
-                    // Sadece tam saniyelerde nokta (o noktada biten saniyenin istek sayısı okunur)
+                    // Points only at whole seconds (the request count of the second ending there is read)
                     ...secondDotOptions(
                         (ctx) => isSecondMark(ctx.raw?.x),
                         (ctx) => (windowMeta[ctx.dataIndex]?.hasError ? CHART_COLORS.error : CHART_COLORS.avg)
                     ),
-                    // Hata olan dilime giden parça ve altındaki alan kırmızı
+                    // The segment leading to a window with errors, and the area under it, are red
                     segment: {
                         borderColor: (ctx) => (windowMeta[ctx.p1DataIndex]?.hasError ? CHART_COLORS.error : undefined),
                         backgroundColor: (ctx) => (windowMeta[ctx.p1DataIndex]?.hasError ? CHART_COLORS.errorFill : undefined),
@@ -145,7 +145,7 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
                 }),
                 line(t("chart.series.p95"), CHART_COLORS.p95, { hidden: hiddenOf(SERIES.P95) }),
                 line(t("chart.series.p99"), CHART_COLORS.p99, { hidden: hiddenOf(SERIES.P99) }),
-                // Başarılı RPS: sadece tam saniyelerde nokta (her biri o saniyenin tamamı)
+                // Successful RPS: points only at whole seconds (each one is that whole second)
                 line(t("chart.series.completedRps"), CHART_COLORS.successRps, {
                     yAxisID: "y1",
                     hidden: hiddenOf(SERIES.SUCCESS_RPS),
@@ -163,7 +163,7 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
                 line(t("chart.connectionError"), CHART_COLORS.error, {
                     borderWidth: 2,
                     cubicInterpolationMode: "default",
-                    // Bağlantı hatası olan tam saniyelerde nokta bu çizginin üzerinde
+                    // At whole seconds with connection errors, the point sits on this line
                     ...secondDotOptions(
                         (ctx) => isSecondMark(ctx.raw?.x) && Boolean(windowMeta[ctx.dataIndex]?.connectionOnly),
                         () => CHART_COLORS.error
@@ -176,9 +176,9 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
             maintainAspectRatio: false,
             parsing: false,
             normalized: true,
-            // Noktalar animasyonsuz: akış hissini perde ve eksen döngüsü veriyor
+            // Points aren't animated: the curtain and axis loop create the sense of flow
             animation: false,
-            // Grafiğin her yerinde: farenin yatayda en yakın olduğu an
+            // Anywhere on the chart: the moment horizontally closest to the mouse
             interaction: { mode: "nearest", axis: "x", intersect: false },
             onHover: (event, elements, chart) => tooltip.handleHover(event, elements, chart),
             plugins: {
@@ -188,7 +188,7 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
                     pan: {
                         enabled: true,
                         mode: "x",
-                        // Kullanıcı grafikle oynamaya BAŞLADIĞI anda otomatik kaydırma durur (zıplama olmasın)
+                        // Auto-scroll stops the moment the user STARTS interacting with the chart (no jumping)
                         onPanStart: () => {
                             userZoomed = true;
                             return true;
@@ -203,7 +203,7 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
                             return true;
                         },
                     },
-                    // Uzaklaştırma ve kaydırma verinin bulunduğu aralıkla sınırlı (max her yeni noktada büyür)
+                    // Zooming out and panning are limited to the range that has data (max grows with each new point)
                     limits: { x: { min: 0, max: initialMaxSeconds, minRange: 1 } },
                 },
             },
@@ -217,12 +217,12 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
                 },
                 y: {
                     beginAtZero: true,
-                    // Tavanı animasyon döngüsü yönetir, Chart.js kendi kendine değiştirmez
+                    // The animation loop manages the ceiling; Chart.js doesn't change it on its own
                     max: Y_AXIS.min,
                     ticks: {
                         color: CHART_COLORS.tick,
                         font: MONO_FONT,
-                        // Sürekli değişen tavanın kendisini (263 gibi) etiket olarak gösterme, sadece düzgün değerler
+                        // Don't show the constantly changing ceiling itself (like 263) as a label, only round values
                         includeBounds: false,
                         callback: (v) => `${formatNumber(Math.round(v))}ms`,
                     },
@@ -231,14 +231,14 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
                 y1: {
                     position: "right",
                     beginAtZero: true,
-                    // Sadece RPS çizgilerinden biri görünürken eksen gösterilir
+                    // The axis is shown only while one of the RPS lines is visible
                     display: "auto",
                     ticks: { color: CHART_COLORS.successRps, font: MONO_FONT, callback: (v) => `${formatNumber(Math.round(v))} r/s` },
                     grid: { display: false },
                 },
             },
         },
-        // Sıra önemli: perde önce açılır ve kapanır, kesikli çizgi (crosshair) perdenin dışında kalır
+        // Order matters: the curtain opens and closes first, so the dashed line (crosshair) stays outside the curtain
         plugins: [revealPlugin, glowPlugin, crosshairPlugin],
     });
 
@@ -246,8 +246,8 @@ export function createChart(durationSeconds = 10, profileType = "CONSTANT") {
     updateLegendButtons(liveChart);
 }
 
-// Bir dilimi grafiğe ekler. Dilim, BAŞLADIĞI ana konur (0–0,2 arası → 0).
-// Noktanın oturduğu zamanı döndürür. Canlı akış ve yeniden bağlanma aynı fonksiyonu kullanır.
+// Adds a window to the chart. The window is placed at the moment it STARTS (0–0.2 → 0).
+// Returns the time the point was placed at. The live stream and reconnection use the same function.
 export function addWindow(d) {
     if (!liveChart) return null;
 
@@ -255,14 +255,14 @@ export function addWindow(d) {
 
     const end = snapToWindow(d.elapsedSeconds, windowSeconds);
     let x = roundTime(end - windowSeconds);
-    // Zamanlayıcı küçük oynamalarla iki dilimi aynı noktaya oturtursa sonrakini bir adım ileri al
+    // If small timer jitter snaps two windows to the same point, move the later one a step forward
     if (windowMeta.length > 0 && x <= lastX) x = roundTime(lastX + windowSeconds);
     if (x < 0) x = 0;
 
 
-    // Boş dilim (o 0,2 saniyede hiç cevap gelmedi; düşük RPS'te olağan): gecikme çizgilerine nokta eklenmez,
-    // çizgiler bir önceki noktadan sonrakine kesintisiz bağlanır. Grafik yine de düzgün ilerler.
-    // (Bağlantı hatası farklı: istek var ama gecikme yok, aşağıda kırmızı çizgiyle gösterilir.)
+    // Empty window (no responses at all in that 0.2 s; normal at low RPS): no point is added to the latency lines,
+    // the lines connect seamlessly from the previous point to the next. The chart still advances smoothly.
+    // (A connection error is different: there are requests but no latency; shown below with a red line.)
     if (d.requestCount === 0) {
         liveChart.data.datasets[SERIES.SENT_RPS].data.push({ x, y: d.targetRps });
         lastX = x;
@@ -292,12 +292,12 @@ export function addWindow(d) {
     ds[SERIES.P99].data.push({ x, y: d.p99ResponseTime });
     ds[SERIES.SENT_RPS].data.push({ x, y: d.targetRps });
 
-    // Bağlantı hatası çizgisi: son gerçek değerden düz devam eder, bağlantı gelince yeni değere bağlanır
+    // Connection error line: continues flat from the last real value, and joins the new value when the connection returns
     const conn = ds[SERIES.CONNECTION].data;
 
     if (!hasLatency) {
         const level = lastLatency ?? 0;
-        // Kesinti yeni başladıysa kırmızı çizgi bir önceki (son gerçek) noktadan başlasın
+        // If the outage just started, the red line should start from the previous (last real) point
         if (!inOutage && index > 0 && lastLatency !== null) {
             conn[index - 1] = { x: conn[index - 1].x, y: level };
         }
@@ -318,8 +318,8 @@ export function addWindow(d) {
     return x;
 }
 
-// Biten bir saniyenin istek sayılarını kaydeder. Nokta saniyenin BİTTİĞİ yere konur (0–1 arası → 1).
-// Ekrana bir sonraki dilimle birlikte çizilir.
+// Records the request counts of a finished second. The point is placed where the second ENDS (0–1 → 1).
+// It's drawn on screen together with the next window.
 export function addSecondPoint(endSecond, totals) {
     if (!liveChart) return;
 
@@ -327,14 +327,14 @@ export function addSecondPoint(endSecond, totals) {
     liveChart.data.datasets[SERIES.SUCCESS_RPS].data.push({ x: endSecond, y: totals.success });
 }
 
-// Test bitince çizgiyi son dilimin bitiş anına kadar uzatır (10 sn'lik test 10'da biter, 9,8'de değil).
-// Yeni bir ölçüm değil: son dilimin aynı değerleri, sadece dilimin sonunu gösterir.
+// When the test ends, extends the line to the end of the last window (a 10 s test ends at 10, not 9.8).
+// Not a new measurement: the same values as the last window, just marking the window's end.
 export function closeChart() {
     if (!liveChart || windowMeta.length === 0) return;
 
     const last = windowMeta[windowMeta.length - 1];
     const endX = roundTime(last.x + windowSeconds);
-    // Son dolu dilimden sonra boş dilimler geldiyse grafik zaten oraya kadar ilerledi
+    // If empty windows came after the last non-empty one, the chart has already advanced that far
     if (windowIndexByX.has(xKey(endX)) || endX <= lastX) return;
 
     const index = windowMeta.length;
@@ -363,7 +363,7 @@ export function resetChartZoom() {
     liveChart.update("none");
 }
 
-// Açıklama satırının butonlarını bağla (sayfa açılışında bir kez)
+// Wire up the legend row's buttons (once when the page opens)
 export function initLegend() {
     bindLegend(() => liveChart);
 }

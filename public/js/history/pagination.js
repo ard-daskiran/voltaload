@@ -1,8 +1,8 @@
-// Sayfalama: "Toplam 87 test kaydı arasından 21 - 40 gösteriliyor" ve sayfa butonları.
+// Pagination: "Showing 21 - 40 of 87 test runs" and the page buttons.
 
 import { t, formatNumber } from "../core/i18n.js";
 
-// Gösterilecek sayfa numaraları. Çok sayfa varsa araya "…" girer: 1 … 4 5 6 … 12
+// Page numbers to show. With many pages, "…" goes in between: 1 … 4 5 6 … 12
 function pageWindow(current, totalPages) {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
 
@@ -39,7 +39,7 @@ function button(content, { active = false, disabled = false, onClick } = {}) {
     return btn;
 }
 
-// onChange(page): bir sayfa butonuna basılınca
+// onChange(page): when a page button is clicked
 export function createPagination({ rangeEl, pagesEl, onChange }) {
     function render({ page, pageSize, total }) {
         const totalPages = Math.max(1, Math.ceil(total / pageSize));

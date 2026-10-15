@@ -1,9 +1,9 @@
-// Volta'nın kendi durumu: gecikme ve MB/s göstergeleri, zorlanınca uyarı şeridi.
+// Volta's own status: lag and MB/s indicators, and a warning strip when it's under strain.
 
 import { $ } from "../core/dom.js";
 import { t, formatNumber } from "../core/i18n.js";
 
-const WARNING_HOLD_MS = 3000; // Uyarı, son zorlanmadan sonra bu kadar görünür kalır
+const WARNING_HOLD_MS = 3000; // The warning stays visible this long after the last strain
 
 export function createVoltaStatus() {
     const lagText = $("lag-text");

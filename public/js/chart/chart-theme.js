@@ -1,6 +1,6 @@
-// Grafiğin görsel sabitleri: renkler, çizgi sırası, nokta boyutları, eksen ayarları.
+// The chart's visual constants: colors, line order, point sizes, axis settings.
 
-// Veri setlerinin sırası (açıklama satırındaki data-series değerleriyle aynı)
+// Order of the datasets (same as the data-series values in the legend row)
 export const SERIES = { AVG: 0, P95: 1, P99: 2, SUCCESS_RPS: 3, SENT_RPS: 4, CONNECTION: 5 };
 
 export const CHART_COLORS = {
@@ -17,11 +17,11 @@ export const CHART_COLORS = {
     background: "#0b0e14",
 };
 
-// Tam saniye noktaları: koyu halkalı küçük nokta, üzerine gelince büyür
+// Whole-second points: small dot with a dark ring, grows on hover
 export const SECOND_DOT = { radius: 3.5, hoverRadius: 6, ring: 1.5 };
 
-// Gecikme ekseni: tavan = en yüksek değer × 1,2. Sadece büyür, büyürken yavaşça kayar.
-// Üst sınır 2750: gecikme 2500'ü (timeout) geçemez, 2500 çizgisi tavana yapışmasın.
+// Latency axis: ceiling = highest value × 1.2. It only grows, sliding smoothly as it does.
+// Upper limit 2750: latency can't exceed 2500 (timeout), so the 2500 line doesn't stick to the ceiling.
 export const Y_AXIS = { min: 100, cap: 2750, headroom: 1.2, animationMs: 500 };
 
 export const MONO_FONT = { family: "'IBM Plex Mono', monospace", size: 10 };

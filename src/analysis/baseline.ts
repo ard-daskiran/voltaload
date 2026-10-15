@@ -1,6 +1,6 @@
-// Sağlıklı seviye: sunucunun rahat zamandaki p95'i. Gecikme artışı buna göre ölçülür.
-// Ancak ilk saniyeler gerçekten sağlıklıysa geçerlidir.
-// Değilse (sunucu baştan zorlandıysa) sadece sabit sınırlar, hata ve RPS kuralları uygulanır.
+// Baseline: the server's p95 when it's at ease. Latency increase is measured against it.
+// It's only valid if the first seconds really were healthy.
+// Otherwise (if the server was strained from the start) only the fixed limits, error and RPS rules apply.
 
 import { THRESHOLDS as T } from "./thresholds.js";
 import { median, type SecondStats } from "./seconds.js";
@@ -9,21 +9,21 @@ import { aggregate } from "./classify.js";
 
 export interface Baseline {
   valid: boolean;
-  measured: boolean; // Sağlıklı seviye için ölçülebilir saniye var mıydı (yoksa sunucuya baştan bağlanılamadı)
+  measured: boolean; // Were there measurable seconds for the baseline (if not, the server couldn't be reached from the start)
   p95: number | null;
 }
 
-// limitIndex: bu saniyeden öncesine bak (kademeli testte ilk kademenin sonu)
+// limitIndex: look before this second (in a stepped test, the end of the first step)
 export function findBaseline(seconds: SecondStats[], limitIndex: number): Baseline {
-  // Bağlantı hatası olan saniyeler alınmaz: o saniyelerde sunucu yavaş değil, hiç yok.
-  // (Sunucu ilk saniyelerde kapanırsa "baştan zorlandı" denmesin, kopma kendi olayıyla anlatılır.)
+  // Seconds with connection errors are skipped: in those seconds the server isn't slow, it's not there at all.
+  // (If the server shuts down in the first seconds, don't say "strained from the start"; the disconnect is reported by its own event.)
   const inRange = seconds.filter(
     (s) =>
       s.index < limitIndex && s.latencies.length > 0 && s.connectionErrors / s.total < T.connectionErrorRate
   );
 
-  // Isınma saniyesi atlanır. İlk kademe çok kısaysa (örneğin 2,5 sn) geriye tek saniye kalabilir,
-  // o zaman tek saniyeyle yetinilir. Hiç kalmazsa ısınma saniyesi de kullanılır.
+  // The warm-up second is skipped. If the first step is very short (e.g. 2.5 s) only one second may remain;
+  // then that single second is used. If none remain, the warm-up second is used too.
   let candidates = inRange.filter((s) => s.index >= T.warmupSeconds).slice(0, T.baselineSeconds);
   if (candidates.length === 0) candidates = inRange.slice(0, T.baselineSeconds);
   if (candidates.length === 0) return { valid: false, measured: false, p95: null };

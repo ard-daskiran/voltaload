@@ -1,5 +1,5 @@
-// Rapor sayfası (/report.html?id=...): testin verisini, analizini çeker, raporu kurar, grafiği çizer.
-// "PDF olarak kaydet" tarayıcının yazdırma penceresini açar.
+// Report page (/report.html?id=...): fetches the test's data and analysis, builds the report, draws the chart.
+// "Save as PDF" opens the browser's print dialog.
 
 import { $ } from "../core/dom.js";
 import { t, applyTranslations, getLanguage, switchLanguage } from "../core/i18n.js";
@@ -16,7 +16,7 @@ $("report-back").href = `/test.html?id=${encodeURIComponent(testRunId ?? "")}`;
 printButton.addEventListener("click", () => window.print());
 
 
-// Dil seçimi: seçili olan sarı, tıklanınca sayfa yeni dille yenilenir
+// Language selection: the selected one is yellow; clicking reloads the page in the new language
 document.querySelectorAll(".lang-switch [data-lang]").forEach((button) => {
     button.classList.toggle("active", button.dataset.lang === getLanguage());
     button.addEventListener("click", () => switchLanguage(button.dataset.lang));
@@ -29,7 +29,7 @@ function showMessage(text) {
     $("report").replaceChildren(p);
 }
 
-// Durum kodu sayıları ve saniyelik başarılı istekler (grafiğin başarılı RPS çizgisi için)
+// Status code counts and per-second successful requests (for the chart's successful RPS line)
 function summarizeWindows(windows) {
     const statusCounts = {};
     for (const w of windows) {
@@ -84,13 +84,13 @@ async function load() {
 
         renderReport($("report"), { testRun, summary, analysis, statusCounts });
 
-        // Grafik, yazı tipleri yüklendikten sonra çizilir (eksen yazıları doğru fontla çıksın)
+        // The chart is drawn after fonts load (so the axis labels use the right font)
         try {
             await document.fonts.ready;
         } catch {
-            // Yazı tipi bilgisi alınamazsa beklemeden devam et
+            // If font info isn't available, continue without waiting
         }
-        // Grafiğe sadece dolu dilimler (boş dilimler çizgileri koparmasın); saniye sayıları bütün dilimlerden
+        // Only non-empty windows go to the chart (so empty ones don't break the lines); second counts come from all windows
         drawReportChart(
             $("report-chart"),
             windows.filter((w) => w.requestCount > 0),

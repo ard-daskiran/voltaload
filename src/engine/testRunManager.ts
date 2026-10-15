@@ -10,7 +10,7 @@ import { apiError, errorBody, type ApiError } from "../errors.js";
 
 export type FinalStatus = "COMPLETED" | "STOPPED" | "FAILED";
 
-// Zamanlayıcı bazen birkaç milisaniye erken çalışabilir; dilim sınırının hemen önüne düşmesin diye küçük pay
+// The timer can sometimes fire a few milliseconds early; a small margin so it doesn't land just before a window boundary
 const LIVE_TIMER_MARGIN_MS = 5;
 
 interface StartTestRunParams {
@@ -39,7 +39,7 @@ interface ActiveRun {
   config: {
     url: string;
     method: string;
-    body?: string; // Sayfa yeniden bağlanınca form gövdeyle de dolsun
+    body?: string; // So the form is filled with the body too when the page reconnects
     targetRps: number;
     durationSeconds: number;
     profile?: LoadProfile;
@@ -48,19 +48,19 @@ interface ActiveRun {
   snapshot: () => Promise<number>;
 }
 
-// --- Aynı anda tek test kuralı ---
+// --- One test at a time rule ---
 
 let activeRun: ActiveRun | null = null;
 let slotReserved = false;
 
-// Route, veritabanına dokunmadan ÖNCE çağırır. Arada bekleme olmadığı için yarış oluşmaz.
+// The route calls this BEFORE touching the database. No await in between, so there's no race.
 export function reserveTestSlot(): boolean {
   if (slotReserved) return false;
   slotReserved = true;
   return true;
 }
 
-// Test başlatılamadan önce bir hata olursa route kilidi bırakır
+// If an error occurs before the test could start, the route releases the lock
 export function releaseTestSlot(): void {
   if (!activeRun) slotReserved = false;
 }
@@ -71,15 +71,15 @@ export function getActiveTestRun() {
 }
 
 
-// Sayfa çalışan teste yeniden bağlanırken çağrılır: tampondaki sonuçları veritabanına yazar ve canlı yayında
-// o ana kadar gönderilmiş dilim sayısını döndürür. O dilimler veritabanından, sonrakiler canlı akıştan gelir.
-// Test çalışmıyorsa (ya da başka bir testse) null.
+// Called when the page reconnects to the running test: writes the buffered results to the database and returns
+// the number of windows sent on the live stream so far. Those windows come from the database, later ones from the live stream.
+// null if the test isn't running (or it's a different test).
 export async function snapshotActiveTest(testRunId: string): Promise<number | null> {
   if (!activeRun || activeRun.testRunId !== testRunId) return null;
   return activeRun.snapshot();
 }
 
-// --- Yardımcılar ---
+// --- Helpers ---
 
 function toDbRows(testRunId: string, items: ResultItem[]) {
   return items.map((r) => ({
@@ -92,11 +92,11 @@ function toDbRows(testRunId: string, items: ResultItem[]) {
   }));
 }
 
-// --- Test yaşam döngüsü ---
+// --- Test lifecycle ---
 
 export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
   if (activeRun) {
-    return Promise.reject(new Error("Zaten çalışan bir test var."));
+    return Promise.reject(new Error("A test is already running."));
   }
   slotReserved = true;
 
@@ -109,17 +109,17 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
 
     let testStartTime: number | null = null;
     let dbBuffer: ResultItem[] = [];
-    let windowLagMs = 0; // Bu dilimdeki en yüksek gecikme
-    let lastLagMs = 0; // Son ölçülen gecikme (boş dilimlerde gösterge bunu göstermeye devam eder)
-    let maxLagMs = 0; // Test boyunca en yüksek gecikme (veritabanına yazılır)
+    let windowLagMs = 0; // Highest lag in this window
+    let lastLagMs = 0; // Last measured lag (the indicator keeps showing it during empty windows)
+    let maxLagMs = 0; // Highest lag during the test (written to the database)
     let finalized = false;
 
-    // Canlı dilimler: sonuçlar cevabın GELDİĞİ ana göre testin başlangıcından itibaren dilimlere yerleşir
-    // (detay sayfasıyla aynı; analiz ise isteğin gönderildiği ana bakar). Sıradaki gönderilecek dilim nextWindow.
+    // Live windows: results are placed into windows counted from the test start, by the response's ARRIVAL time
+    // (same as the detail page; the analysis uses the request's send time instead). The next window to send is nextWindow.
     const liveWindows = new Map<number, ResultItem[]>();
     let nextWindow = 0;
 
-    // Veritabanı yazmaları sırayla yapılır, bir yazma bitmeden diğeri başlamaz
+    // Database writes run in order; one doesn't start until the previous one finishes
     let writeChain: Promise<void> = Promise.resolve();
 
     function writeToDb(items: ResultItem[]) {
@@ -129,11 +129,11 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
           () => undefined
         )
         .catch((err) => {
-          console.error("DB yazma hatası:", err);
+          console.error("DB write error:", err);
         });
     }
 
-    // Başlangıç anı da sonuçlarla aynı sırayla yazılır (özet ve analiz bunu kullanır)
+    // The start time is written in the same order as results (the summary and analysis use it)
     function saveStartedAt(startedAt: number) {
       writeChain = writeChain
         .then(() =>
@@ -142,13 +142,13 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
             .then(() => undefined)
         )
         .catch((err) => {
-          console.error("Başlangıç anı kaydedilemedi:", err);
+          console.error("Could not save the start time:", err);
         });
     }
 
-    // --- Canlı yayın ---
+    // --- Live stream ---
 
-    // Sonucu ait olduğu dilime koy. Dilimi zaten gönderilmiş çok geç bir sonuç, sıradaki dilime eklenir (kaybolmasın).
+    // Put the result into its window. A very late result whose window was already sent goes into the next window (so it isn't lost).
     function addToLive(items: ResultItem[]) {
       if (testStartTime === null) return;
       for (const item of items) {
@@ -159,7 +159,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       }
     }
 
-    // Bir dilimi gönder. Zamanı dilimin sonu (0–0,2 arası → 0,2). Boş dilim de gönderilir: grafik düzgün ilerler.
+    // Send one window. Its time is the window's end (0–0.2 → 0.2). Empty windows are sent too, so the chart advances smoothly.
     function emitWindow(index: number, items: ResultItem[]) {
       const s = summarizeWindow(items);
       const elapsedSeconds = ((index + 1) * LIVE_WINDOW_MS) / 1000;
@@ -182,7 +182,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       windowLagMs = 0;
     }
 
-    // Süresi dolmuş dilimleri sırayla gönder. final: test bitti, elde ne varsa gönder.
+    // Send finished windows in order. final: the test ended, send whatever is left.
     function emitReadyWindows(final: boolean) {
       if (testStartTime === null) return;
 
@@ -206,9 +206,9 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       writeToDb(toWrite);
     }, DB_FLUSH_INTERVAL_MS);
 
-    // Canlı dilim zamanlayıcısı: testin başlangıcına hizalı. Her dilim bittikten LIVE_EMIT_DELAY_MS sonra
-    // çalışır ve tam bir dilim gönderir. (Hizasız bir setInterval, dilim sınırına yakın denk gelince
-    // bazen 0, bazen 2 dilim gönderip grafiği sarsıyordu.) Gecikirse kaçırdıklarını bir sonraki seferde gönderir.
+    // Live window timer: aligned to the test start. It runs LIVE_EMIT_DELAY_MS after each window ends
+    // and sends exactly one window. (An unaligned setInterval, landing near a window boundary,
+    // sometimes sent 0 and sometimes 2 windows and made the chart jerky.) If it runs late, it sends the missed ones next time.
     let liveTimer: ReturnType<typeof setTimeout> | null = null;
 
     function scheduleLiveTick() {
@@ -223,7 +223,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       }, Math.max(0, nextDue - Date.now()));
     }
 
-    // Test nasıl biterse bitsin (tamamlandı, durduruldu, hata) buradan geçer, sadece bir kez çalışır
+    // However the test ends (completed, stopped, error) it goes through here; runs only once
     async function finalize(status: FinalStatus, error?: ApiError) {
       if (finalized) return;
       finalized = true;
@@ -232,7 +232,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       if (liveTimer) clearTimeout(liveTimer);
       await worker.terminate();
 
-      // Tamponda kalanları yaz, bekleyen yazmaların bitmesini bekle
+      // Write what's left in the buffer, wait for pending writes to finish
       if (dbBuffer.length > 0) {
         writeToDb(dbBuffer);
         dbBuffer = [];
@@ -241,7 +241,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
 
       emitReadyWindows(true);
 
-      // Özet bütün sonuçlar yazıldıktan sonra hesaplanır
+      // The summary is computed after all results are written
       try {
         const summary = await computeTestSummary(params.testRunId);
         await prisma.testRun.update({
@@ -249,7 +249,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
           data: { status, finishedAt: new Date(), ...summary, maxLagMs: Math.round(maxLagMs) },
         });
       } catch (err) {
-        console.error("Test özeti kaydedilemedi:", err);
+        console.error("Could not save the test summary:", err);
       }
 
       if (status === "FAILED") {
@@ -274,7 +274,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
         profile: params.profile,
       },
       stop: () => finalize("STOPPED"),
-      // Gönderilmiş dilimlerin bütün sonuçları şu an ya tamponda ya veritabanında: tamponu yaz, sınırı döndür
+      // All results of the sent windows are now either in the buffer or in the database: write the buffer, return the boundary
       snapshot: async () => {
         const sentWindows = nextWindow;
         if (dbBuffer.length > 0) {
@@ -287,7 +287,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
     };
 
     worker.on("message", (message) => {
-      // Testin başlangıç anı: canlı dilimler buradan sayılır, veritabanına da yazılır
+      // The test's start time: live windows count from here; it's also written to the database
       if (message.type === "started") {
         testStartTime = message.startedAt;
         saveStartedAt(message.startedAt);
@@ -295,7 +295,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       }
 
       if (message.type === "batch") {
-        // "started" mesajı her zaman önce gelir; gelmediyse (beklenmez) ilk paketin anı
+        // The "started" message always comes first; if it didn't (not expected), use the first batch's time
         if (testStartTime === null) {
           testStartTime = Date.now();
           scheduleLiveTick();
@@ -307,7 +307,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
         windowLagMs = Math.max(windowLagMs, lagMs);
         lastLagMs = lagMs;
 
-        // İlk saniyedeki gecikme kaydedilmez: worker ısınırken kısa süre yükselebilir
+        // Lag in the first second isn't recorded: it can spike briefly while the worker warms up
         if (Date.now() - testStartTime >= 1000) {
           maxLagMs = Math.max(maxLagMs, lagMs);
         }
@@ -323,11 +323,11 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
     });
 
     worker.on("error", (err) => {
-      console.error("Worker hatası:", err);
+      console.error("Worker error:", err);
       void finalize("FAILED", apiError("TEST_UNEXPECTED_ERROR"));
     });
 
-    // Bizim kapatmadığımız bir kapanma (çökme, bellek sınırı vb.)
+    // An exit we didn't trigger (crash, memory limit, etc.)
     worker.on("exit", () => {
       void finalize("FAILED", apiError("WORKER_EXITED"));
     });

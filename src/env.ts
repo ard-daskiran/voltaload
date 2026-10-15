@@ -1,6 +1,6 @@
-// .env her şeyden önce yüklenir (server.ts'te ilk içeri alma). Proje kökünden okunur
-// (src/ ya da derlenmiş dist/'in bir üstü): Volta başka bir klasörden başlatılsa da projenin .env'i kullanılır,
-// o klasörde başka bir .env varsa (örneğin test edilen projenin) karışmaz.
+// .env is loaded before everything else (first import in server.ts). It's read from the project root
+// (one level above src/ or the compiled dist/): even if Volta is started from another folder, the project's .env is used,
+// and another .env in that folder (e.g. the tested project's) doesn't interfere.
 import path from "node:path";
 import { config } from "dotenv";
 

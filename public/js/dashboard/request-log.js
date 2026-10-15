@@ -1,4 +1,4 @@
-// İstek günlüğü: her satır bir saniyenin özeti.
+// Request log: each row is a summary of one second.
 
 import { t, formatNumber, formatMs } from "../core/i18n.js";
 import { createSpan } from "../core/dom.js";

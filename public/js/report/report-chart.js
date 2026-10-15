@@ -1,11 +1,11 @@
-// Raporun grafiği: beyaz zemin, etkileşimsiz, animasyonsuz.
-// Ortalama, p95, p99; kademeli testte gönderilen ve başarılı RPS. Hatalı anlar kırmızı.
-// Yazdırmada net çıksın diye 3 kat çözünürlükle çizilir.
+// The report's chart: white background, no interaction, no animation.
+// Average, p95, p99; in a stepped test, sent and successful RPS. Moments with errors are red.
+// Drawn at 3x resolution so it prints sharply.
 
 import { formatNumber } from "../core/i18n.js";
 import { DEFAULT_WINDOW_SECONDS, roundTime, snapToWindow, formatTimeTick } from "../chart/chart-time.js";
 
-// Beyaz zemine göre koyulaştırılmış renkler (uygulamadaki renklerin koyu tonları)
+// Colors darkened for a white background (darker shades of the app's colors)
 export const REPORT_CHART_COLORS = {
     avg: "#c99700",
     p95: "#0e8f8e",
@@ -21,7 +21,7 @@ export const REPORT_CHART_COLORS = {
 
 const FONT = { family: "'IBM Plex Mono', monospace", size: 9 };
 
-// Her dilimin grafikteki zamanı (canlı grafikle aynı kural: dilim başladığı ana konur)
+// Each window's time on the chart (same rule as the live chart: placed at the moment the window starts)
 export function windowPositions(windows) {
     const xs = [];
     let last = -Infinity;
@@ -38,7 +38,7 @@ export function windowPositions(windows) {
     return xs;
 }
 
-// seconds: [{ second, success }] (biten her saniyenin başarılı istek sayısı)
+// seconds: [{ second, success }] (the successful request count of each finished second)
 export function drawReportChart(canvas, windows, seconds, isStepped) {
     if (windows.length === 0) return null;
 
@@ -47,7 +47,7 @@ export function drawReportChart(canvas, windows, seconds, isStepped) {
     const last = windows.length - 1;
     const endX = roundTime(xs[last] + w);
 
-    // Son dilimin bitişine kapanış noktası (canlı grafikteki gibi)
+    // Closing point at the end of the last window (like in the live chart)
     const series = (pick) => [...windows.map((d, i) => ({ x: xs[i], y: pick(d) })), { x: endX, y: pick(windows[last]) }];
     const hasError = [...windows.map((d) => d.errorCount > 0), windows[last].errorCount > 0];
 

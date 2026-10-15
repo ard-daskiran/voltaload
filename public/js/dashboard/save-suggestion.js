@@ -1,15 +1,15 @@
 // save-suggestion.js
-// Test bitince "bu adresi rehbere kaydetmek ister misin?" önerisi.
-// Kurallar:
-//   - URL rehberde kayıtlı değilse ve en az MIN_RUNS kez test edilmişse (bu test dahil)
-//   - "Hayır" denirse o URL için bir daha sorulmaz (tarayıcıda saklanır)
-//   - Cevap verilmezse 10 sn sonra kaybolur, sonraki testte yine sorulabilir
+// The "save this address to your targets?" suggestion after a test ends.
+// Rules:
+//   - Shown if the URL isn't in the target book and has been tested at least MIN_RUNS times (this test included)
+//   - If the answer is "No", it's never asked again for that URL (stored in the browser)
+//   - If there's no answer it disappears after 10 s and may be asked again on the next test
 
 import { t } from "../core/i18n.js";
 import { showToast } from "../core/toast.js";
 import { shortUrl } from "../core/url.js";
 
-const MIN_RUNS = 2; // 1 yapılırsa ilk testte de sorar
+const MIN_RUNS = 2; // If set to 1, it asks on the first test too
 const SUGGEST_DURATION_MS = 10_000;
 const DISMISSED_KEY = "volta-dismissed-suggestions";
 const MAX_DISMISSED = 200;
@@ -29,11 +29,11 @@ function dismiss(url) {
         list.push(url);
         localStorage.setItem(DISMISSED_KEY, JSON.stringify(list.slice(-MAX_DISMISSED)));
     } catch {
-        // Tarayıcı hafızası kullanılamıyorsa sadece bu sefer kapanır
+        // If browser storage isn't available, it just closes this time
     }
 }
 
-// onSave(url): "Kaydet"e basılınca (rehberi ekleme formuyla açar)
+// onSave(url): when "Save" is clicked (opens the target book with the add form)
 export function createSaveSuggestion({ onSave }) {
     async function maybeSuggest(url) {
         if (!url || readDismissed().includes(url)) return;
@@ -55,7 +55,7 @@ export function createSaveSuggestion({ onSave }) {
                 ],
             });
         } catch (err) {
-            // Öneri isteğe bağlı bir kolaylık, hata olursa sessizce geç
+            // The suggestion is an optional convenience; skip silently on error
             console.error(err);
         }
     }

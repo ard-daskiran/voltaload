@@ -1,7 +1,7 @@
 // testRun.ts
-// Test adresleri: isteği al, ilgili servisi çağır, cevabı gönder.
-// Doğrulama → services/startRequest.ts, hesaplamalar → services/resultQueries.ts
-// Hatalar { error, code, params } biçiminde gönderilir (errors.ts).
+// Test endpoints: take the request, call the matching service, send the response.
+// Validation → services/startRequest.ts, calculations → services/resultQueries.ts
+// Errors are sent as { error, code, params } (errors.ts).
 
 import { Router } from "express";
 import type { Server } from "socket.io";
@@ -26,7 +26,7 @@ import { apiError, errorBody } from "../errors.js";
 export function createTestRunRouter(io: Server): Router {
   const testRunRouter = Router();
 
-  // Test başlat
+  // Start a test
   testRunRouter.post("/", async (req, res) => {
     const validation = validateStartRequest(req.body);
     if (!validation.ok) {
@@ -34,7 +34,7 @@ export function createTestRunRouter(io: Server): Router {
     }
     const input = validation.value;
 
-    // Kilit, veritabanına ve güvenlik kontrolüne dokunmadan ÖNCE alınır (yarışı önler)
+    // The lock is taken BEFORE touching the database and the security check (prevents a race)
     if (!reserveTestSlot()) {
       return res.status(409).json(errorBody(apiError("TEST_ALREADY_RUNNING")));
     }
@@ -75,21 +75,21 @@ export function createTestRunRouter(io: Server): Router {
         profile: input.profile,
         io,
       }).catch((err) => {
-        console.error(`Test ${testRunId} başlatılamadı:`, err.message);
+        console.error(`Test ${testRunId} could not be started:`, err.message);
       });
 
       started = true;
       res.status(201).json({ testRunId });
     } catch (err) {
-      console.error("Test başlatılamadı:", err);
+      console.error("Test could not be started:", err);
       res.status(500).json(errorBody(apiError("START_FAILED")));
     } finally {
-      // Test başlamadıysa kilidi bırak
+      // Release the lock if the test didn't start
       if (!started) releaseTestSlot();
     }
   });
 
-  // Testi durdur
+  // Stop the test
   testRunRouter.post("/:id/stop", (req, res) => {
     const stopped = stopTestRun(req.params.id);
 
@@ -100,22 +100,22 @@ export function createTestRunRouter(io: Server): Router {
     res.json({ stopping: true });
   });
 
-  // Şu an çalışan test (sayfa yenilenince yeniden bağlanmak için).
-  // /:id/... adreslerinden önce tanımlanmalı, "active" bir test kimliği sanılmasın.
+  // The currently running test (to reconnect after a page reload).
+  // Must be defined before the /:id/... routes so "active" isn't taken for a test ID.
   testRunRouter.get("/active", (req, res) => {
     res.json({ active: getActiveTestRun() });
   });
 
-  // Geçmiş listesi: ?page=2&pageSize=20&method=GET&search=products&sort=newest
+  // History list: ?page=2&pageSize=20&method=GET&search=products&sort=newest
   testRunRouter.get("/", async (req, res) => {
     const query = parseListQuery(req.query as Record<string, unknown>);
     res.json(await listTestRuns(query));
   });
 
-  // Bir testin o ana kadarki verisi, canlı akışla aynı biçimde
+  // A test's data so far, in the same shape as the live stream
   testRunRouter.get("/:id/live", async (req, res) => {
-    // Test çalışıyorsa: tampondaki sonuçlar önce yazılır ve sadece canlı yayında zaten gönderilmiş dilimler döner.
-    // Sonrakiler canlı akıştan gelir (bir dilim iki yerden yarım yarım gelmesin, istek kaybolmasın).
+    // If the test is running: buffered results are written first and only windows already sent on the live stream are returned.
+    // Later ones come from the live stream (so a window doesn't arrive half from each source and no request is lost).
     const untilWindow = await snapshotActiveTest(req.params.id);
     const windows = await getLiveWindows(req.params.id, untilWindow ?? undefined);
     if (!windows) {
@@ -125,7 +125,7 @@ export function createTestRunRouter(io: Server): Router {
     res.json({ windows });
   });
 
-  // Otomatik analiz: durum, kapasite, kademe tablosu, olaylar, öneriler
+  // Automatic analysis: status, capacity, step table, events, recommendations
   testRunRouter.get("/:id/analysis", async (req, res) => {
     const analysis = await analyzeTestRun(req.params.id);
     if (!analysis) {
@@ -135,7 +135,7 @@ export function createTestRunRouter(io: Server): Router {
     res.json(analysis);
   });
 
-  // Detay sayfası: testin kaydı ve özeti (grafik verisi /:id/live'dan gelir)
+  // Detail page: the test's record and summary (chart data comes from /:id/live)
   testRunRouter.get("/:id", async (req, res) => {
     const detail = await getTestDetail(req.params.id);
     if (!detail) {
@@ -145,7 +145,7 @@ export function createTestRunRouter(io: Server): Router {
     res.json(detail);
   });
 
-  // Tüm testleri sil (veritabanı temizleme)
+  // Delete all tests (clear the database)
   testRunRouter.delete("/", async (req, res) => {
     const result = await clearAllTestRuns();
     if (!result.ok) {
@@ -155,7 +155,7 @@ export function createTestRunRouter(io: Server): Router {
     res.json({ deletedRuns: result.deletedRuns, deletedResults: result.deletedResults });
   });
 
-  // Tek bir testi sil
+  // Delete a single test
   testRunRouter.delete("/:id", async (req, res) => {
     const result = await deleteTestRun(req.params.id);
     if (!result.ok) {

@@ -40,13 +40,13 @@
   <body
     class="min-h-screen font-body-md text-body-md flex flex-col overflow-x-hidden"
   >
-    <!-- Üst menü: core/header.js doldurur -->
+    <!-- Top menu: filled by core/header.js -->
     <div id="app-header" data-active="history"></div>
 
     <main
       class="flex-1 w-full max-w-[1920px] px-margin-page pt-24 pb-10 mx-auto flex flex-col gap-container-gap"
     >
-      <!-- Başlık -->
+      <!-- Title -->
       <section
         class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
       >
@@ -67,7 +67,7 @@
           ></p>
         </div>
         <div class="flex items-center gap-3">
-          <!-- Veritabanını temizle: tüm testleri siler, "SİL" yazdırarak onay alır -->
+          <!-- Clear database: deletes all tests, asks for confirmation by typing "DELETE" -->
           <button
             type="button"
             id="clear-db-btn"
@@ -88,7 +88,7 @@
         </div>
       </section>
 
-      <!-- Arama, filtre, sıralama -->
+      <!-- Search, filter, sorting -->
       <section class="flex flex-col md:flex-row gap-4 w-full">
         <div class="flex-1 relative glow-effect rounded">
           <div
@@ -134,7 +134,7 @@
               POST
             </button>
           </div>
-          <!-- Sıralama: açılır menü -->
+          <!-- Sorting: dropdown menu -->
           <div id="history-sort" class="relative">
             <button
               type="button"
@@ -161,7 +161,7 @@
         </div>
       </section>
 
-      <!-- Tablo -->
+      <!-- Table -->
       <section
         class="w-full border border-border-subtle rounded bg-surface-container-lowest overflow-hidden"
       >
@@ -216,7 +216,7 @@
           </table>
         </div>
 
-        <!-- Sayfalama -->
+        <!-- Pagination -->
         <div
           class="bg-surface-container-low border-t border-border-subtle px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3"
         >

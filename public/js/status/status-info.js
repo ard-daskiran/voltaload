@@ -1,12 +1,12 @@
-// Durum kodları hakkında bilgi: açıklama, kısa ad, kategori ve renk.
-// Anasayfa, detay sayfası ve rapor kullanır.
+// Information about status codes: description, short name, category and color.
+// Used by the home page, the detail page and the report.
 
 import { t } from "../core/i18n.js";
 
-// Cevap gelmeyen istekler için kullanılan hata türleri
+// Error types used for requests with no response
 const ERROR_TYPES = ["TIMEOUT", "CONNECTION_REFUSED", "CONNECTION_RESET", "NETWORK_ERROR"];
 
-// HTTP'nin standart kod adları (her dilde aynı kalır)
+// HTTP's standard code names (the same in every language)
 const HTTP_REASONS = {
     200: "OK", 201: "Created", 202: "Accepted", 204: "No Content",
     301: "Moved Permanently", 302: "Found", 304: "Not Modified",
@@ -20,7 +20,7 @@ function isErrorType(code) {
     return ERROR_TYPES.includes(String(code));
 }
 
-// Kategori: grafiği kırmızı yapıp yapmadığını da belirler (sadece serverError yapar)
+// Category: also decides whether it turns the chart red (only serverError does)
 export function statusCategory(code) {
     const numeric = Number(code);
     if (isErrorType(code) || numeric >= 500) return "serverError";
@@ -29,7 +29,7 @@ export function statusCategory(code) {
     return "success";
 }
 
-// Kodun açıklaması: önce kodun kendisine özel metin, yoksa grubunun genel metni
+// The code's description: first the code's own text, otherwise its group's general text
 export function statusDescription(code) {
     const key = `status.${code}`;
     const specific = t(key);
@@ -43,7 +43,7 @@ export function statusDescription(code) {
     return t("status.unknown");
 }
 
-// Kısa ad: HTTP kodları için standart adı, hata türleri için sözlükteki adı
+// Short name: the standard name for HTTP codes, the dictionary name for error types
 export function statusName(code) {
     if (isErrorType(code)) return t(`status.name.${code}`);
     return HTTP_REASONS[code] ?? "";
@@ -62,7 +62,7 @@ export function statusStyle(code) {
     }
 }
 
-// Sıralama: önce sayısal kodlar küçükten büyüğe, sonra hata türleri
+// Sorting: numeric codes first in ascending order, then error types
 export function sortStatusCodes(codes) {
     return [...codes].sort((a, b) => {
         const aErr = isErrorType(a);

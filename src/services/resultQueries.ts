@@ -1,7 +1,7 @@
-// Kaydedilmiş sonuçlardan hesaplar:
-//   getLiveWindows → o ana kadarki veri, canlı akışla aynı biçimde (canlı grafik ve detay sayfası kullanır)
-//   getTestDetail  → testin kaydı ve özeti (detay sayfası)
-// İkisi de test bulunamazsa null döndürür.
+// Calculations from saved results:
+//   getLiveWindows → data so far, in the same shape as the live stream (used by the live chart and the detail page)
+//   getTestDetail  → the test's record and summary (detail page)
+// Both return null if the test isn't found.
 
 import { prisma } from "../db/prisma.js";
 import { computeTestSummary } from "../engine/summary.js";
@@ -13,10 +13,10 @@ import { targetNamesFor } from "./savedTargets.js";
 
 type TestRunRecord = NonNullable<Awaited<ReturnType<typeof prisma.testRun.findUnique>>>;
 
-// --- Özet ---
+// --- Summary ---
 
-// Test bittiyse özet kayıttan okunur, hâlâ çalışıyorsa o an hesaplanır.
-// Hiç cevap alınamadıysa null (arayüz "ölçülebilen cevap yok" mesajını gösterir).
+// If the test has ended the summary is read from the record; if it's still running it's computed on the spot.
+// null if no response was received at all (the UI shows the "no measurable responses" message).
 async function loadSummary(testRun: TestRunRecord) {
   const source =
     testRun.status !== "RUNNING" && testRun.totalRequests !== null
@@ -50,11 +50,11 @@ async function loadSummary(testRun: TestRunRecord) {
   };
 }
 
-// --- Canlı dilimler ---
+// --- Live windows ---
 
-// Bir testin o ana kadarki verisi, canlı akışla AYNI biçimde (LIVE_WINDOW_MS'lik dilimler, boşlar dahil).
-// Canlı sayfa yenilenince ve detay sayfasında grafik bu dilimlerle çizilir.
-// untilWindow: verilirse sadece bu dilimden öncekiler (çalışan testte, canlı yayında zaten gönderilmiş olanlar)
+// A test's data so far, in the SAME shape as the live stream (LIVE_WINDOW_MS windows, empty ones included).
+// When the live page reloads and on the detail page, the chart is drawn from these windows.
+// untilWindow: if given, only windows before this one (for a running test, those already sent on the live stream)
 export async function getLiveWindows(id: string, untilWindow?: number) {
   const testRun = await prisma.testRun.findUnique({ where: { id } });
   if (!testRun) return null;
@@ -67,7 +67,7 @@ export async function getLiveWindows(id: string, untilWindow?: number) {
 
   const profile = profileOf(testRun);
 
-  // Dilimler testin başlangıcından sayılır (canlı akış ve analizle aynı). Eski testlerde ilk cevaptan.
+  // Windows are counted from the test start (same as the live stream and analysis). In old tests, from the first response.
   const origin = testRun.startedAt?.getTime() ?? (rows.length > 0 ? rows[0].timestamp.getTime() : 0);
   const groups = new Map<number, typeof rows>();
 
@@ -84,7 +84,7 @@ export async function getLiveWindows(id: string, untilWindow?: number) {
 
   for (let index = 0; index <= lastIndex; index++) {
     const s = summarizeWindow(groups.get(index) ?? []);
-    // Zamanı dilimin sonu (canlı akışla aynı)
+    // Its time is the window's end (same as the live stream)
     const elapsedSeconds = ((index + 1) * LIVE_WINDOW_MS) / 1000;
 
     windows.push({
@@ -106,9 +106,9 @@ export async function getLiveWindows(id: string, untilWindow?: number) {
   return windows;
 }
 
-// --- Detay sayfası ---
+// --- Detail page ---
 
-// Testin kaydı ve özeti. Grafik verisi ayrıca getLiveWindows'tan gelir.
+// The test's record and summary. Chart data comes separately from getLiveWindows.
 export async function getTestDetail(id: string) {
   const testRun = await prisma.testRun.findUnique({ where: { id } });
   if (!testRun) return null;

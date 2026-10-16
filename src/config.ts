@@ -30,6 +30,12 @@ export const MIN_STEP_DURATION_SECONDS = 2;
 // Wait time for the connection attempt in the pre-check
 export const CONNECT_CHECK_TIMEOUT_MS = 2000;
 
+
+// How long Volta waits for a response before counting the request as a timeout.
+// Raise it to test slow endpoints (e.g. AI calls). Allowed: 1000–30000 ms. The upper limit keeps the number of
+// open requests in check: on a slow server, 1000 RPS with a 30 s timeout can mean 30,000 requests in flight.
+export const REQUEST_TIMEOUT_MS = 2500;
+
 // Live stream and database write intervals.
 // LIVE_WINDOW_MS is the chart's window length: the live chart, page reload and detail page use the same value.
 // It must divide 1000 evenly (100, 200, 250, 500...): the chart builds seconds from these windows.
@@ -48,6 +54,9 @@ export const WORKER_LAG_WARNING_MS = 50;
 // Maximum target URL length (test start and target book)
 export const MAX_URL_LENGTH = 2000;
 
+// Largest JSON body accepted for a test (KB). Allowed: 1–1024. The body is sent with every request and saved with the test.
+export const MAX_BODY_KB = 100;
+
 // Longest text allowed in search boxes (history list and target book)
 export const MAX_SEARCH_LENGTH = 200;
 
@@ -59,6 +68,9 @@ export const MAX_SEARCH_LENGTH = 200;
 // MAX_TARGET_RPS can be raised to at most this value. Above it the scheduler and worker can't keep up,
 // and measurements become unreliable (Volta lag was measured at ~14 ms at 1000 RPS).
 const RPS_CEILING = 4000;
+
+const REQUEST_TIMEOUT_CEILING_MS = 30000;
+const BODY_CEILING_KB = 1024;
 
 export function validateConfig(): string[] {
   const problems: string[] = [];
@@ -131,6 +143,16 @@ export function validateConfig(): string[] {
     problems.push(`LIVE_WINDOW_MS must divide 1000 evenly, e.g. 100, 200, 250, 500 (current: ${LIVE_WINDOW_MS})`);
   }
 
+    // Request timeout and body size
+  wholeAtLeast("REQUEST_TIMEOUT_MS", REQUEST_TIMEOUT_MS, 1000);
+  if (REQUEST_TIMEOUT_MS > REQUEST_TIMEOUT_CEILING_MS) {
+    problems.push(`REQUEST_TIMEOUT_MS cannot be higher than ${REQUEST_TIMEOUT_CEILING_MS} (current: ${REQUEST_TIMEOUT_MS})`);
+  }
+  wholeAtLeast("MAX_BODY_KB", MAX_BODY_KB, 1);
+  if (MAX_BODY_KB > BODY_CEILING_KB) {
+    problems.push(`MAX_BODY_KB cannot be higher than ${BODY_CEILING_KB} (current: ${MAX_BODY_KB})`);
+  }
+  
   wholeAtLeast("MAX_URL_LENGTH", MAX_URL_LENGTH, 1);
   wholeAtLeast("MAX_SEARCH_LENGTH", MAX_SEARCH_LENGTH, 1);
   

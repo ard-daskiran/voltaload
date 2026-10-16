@@ -2,16 +2,13 @@ import { parentPort } from "node:worker_threads";
 import { monitorEventLoopDelay, performance } from "node:perf_hooks";
 import { Agent, request } from "undici";
 import { runScheduledLoop, type LoadProfile } from "./scheduler.js";
-import { WORKER_BATCH_INTERVAL_MS } from "../config.js";
+import { REQUEST_TIMEOUT_MS, WORKER_BATCH_INTERVAL_MS } from "../config.js";
 
 if (!parentPort) {
   throw new Error("This file must only be run inside a worker thread.");
 }
 
 const port = parentPort;
-
-const REQUEST_TIMEOUT_MS = 2500;
-
 
 type ErrorType = "TIMEOUT" | "CONNECTION_REFUSED" | "CONNECTION_RESET" | "NETWORK_ERROR";
 

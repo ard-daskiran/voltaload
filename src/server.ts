@@ -18,6 +18,8 @@ import {
   MIN_STEP_COUNT,
   MAX_STEP_COUNT,
   MIN_STEP_DURATION_SECONDS,
+  REQUEST_TIMEOUT_MS,
+  MAX_BODY_KB,
   validateConfig,
 } from "./config.js";
 import { createSavedTargetRouter } from "./routes/savedTargets.js";
@@ -67,16 +69,15 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: `${MAX_BODY_KB}kb` }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-
-// Test limits: the UI gets its own checks, the inputs' min/max values and hints from here.
-// The limits are only written in config.ts; when they change, the UI follows automatically.
+// Settings the UI needs: its own checks, the inputs' hints, the chart's latency axis and texts that mention
+// the timeout. They are only written in config.ts; when they change, the UI follows automatically.
 app.get("/api/limits", (req, res) => {
   res.json({
     minTargetRps: MIN_TARGET_RPS,
@@ -86,6 +87,8 @@ app.get("/api/limits", (req, res) => {
     minStepCount: MIN_STEP_COUNT,
     maxStepCount: MAX_STEP_COUNT,
     minStepDurationSeconds: MIN_STEP_DURATION_SECONDS,
+    requestTimeoutMs: REQUEST_TIMEOUT_MS,
+    maxBodyKb: MAX_BODY_KB,
   });
 });
 
@@ -113,7 +116,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   if (res.headersSent) return next(err);
 
   if (err?.type === "entity.too.large") {
-    return res.status(413).json(errorBody(apiError("BODY_TOO_LARGE", { max: "100 KB" })));
+    return res.status(413).json(errorBody(apiError("BODY_TOO_LARGE", { max: `${MAX_BODY_KB} KB` })));
   }
   if (err?.type === "entity.parse.failed") {
     return res.status(400).json(errorBody(apiError("INVALID_JSON")));

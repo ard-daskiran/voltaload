@@ -4,6 +4,7 @@
 //
 // Language: on first visit the browser's language (TR if Turkish, otherwise EN), then the user's choice is remembered.
 // When the language changes the page reloads: everything on screen is rebuilt in the new language.
+import { LIMITS } from "./limits.js";
 
 const MESSAGES = {
     tr: {
@@ -192,7 +193,7 @@ const MESSAGES = {
         "hint.avg.graph": "sarı çizgi",
         "hint.requests.text": "Testte sonuçlanan toplam istek sayısı, hatalılar dahil. Anasayfadaki \"Anlık\" değeri son biten saniyedeki istek sayısıdır.",
         "hint.min.text": "En hızlı cevap. Sunucunun boştayken ne kadar hızlı olabileceğine dair bir fikir verir.",
-        "hint.max.text": "En yavaş cevap. 2.500 ms ise en az bir istek zaman aşımına uğramış demektir.",
+        "hint.max.text": "En yavaş cevap. {timeoutMs} ms ise en az bir istek zaman aşımına uğramış demektir.",
         "hint.p95.text": "İsteklerin %95'i bu süreden hızlı cevaplandı. En yavaş %5'i dışarıda bırakır, kullanıcıların çoğunun yaşadığı en kötü durumu gösterir.",
         "hint.p95.graph": "cyan çizgi",
         "hint.p99.text": "İsteklerin %99'u bu süreden hızlı cevaplandı. Nadir ama can sıkıcı gecikmeleri gösterir. p95'ten çok yüksekse arada bir çok yavaş istekler var demektir.",
@@ -204,7 +205,7 @@ const MESSAGES = {
         "hint.errorRate.text": "Sunucu hatası (5xx) ya da cevap alınamayan (zaman aşımı, bağlantı hatası) isteklerin oranı. 4xx cevaplar dahil değil, çünkü onlar sunucunun bilinçli reddi.",
         "hint.errorRate.graph": "kırmızı bölgeler",
         "hint.totalData.text": "Sunucudan gelen cevapların toplam boyutu. Büyük cevaplar hem ağı hem sunucuyu daha çok yorar.",
-        "hint.duration.text": "İlk isteğin gönderilmesinden son cevabın gelmesine kadar geçen süre. Ayarlanan süreden biraz uzun olabilir, çünkü süre dolunca yolda olan isteklerin cevabı beklenir (en fazla 2,5 sn).",
+        "hint.duration.text": "İlk isteğin gönderilmesinden son cevabın gelmesine kadar geçen süre. Ayarlanan süreden biraz uzun olabilir, çünkü süre dolunca yolda olan isteklerin cevabı beklenir (en fazla {timeout} sn).",
 
 
         // --- Target book ---
@@ -302,9 +303,9 @@ const MESSAGES = {
         "rec.overload.title": "Sunucu aşırı yükte istekleri reddediyor ({codes})",
         "rec.overload.text": "Sunucu kapasitesini aşan istekleri bilinçli olarak geri çeviriyor ya da hız sınırlayıcı devrede. Uygulamanın eşzamanlı istek sınırını ve sunucu kaynaklarını (CPU, bellek) gözden geçir.",
         "rec.timeouts.title": "İstekler zaman aşımına uğruyor",
-        "rec.timeouts.text": "İstekler işleniyor ama 2,5 saniye içinde bitmiyor. Yavaş veritabanı sorgularını (eksik indeksler), dış servis çağrılarını ve bekleten (senkron) işlemleri incele.",
-        "rec.tooSlow.title": "Tek bir istek bile 2,5 saniyede tamamlanmıyor olabilir",
-        "rec.tooSlow.text": "İsteklerin neredeyse tamamı zaman aşımına uğradı. Volta 2,5 saniyeden uzun süren istekleri zaman aşımı sayar. Sorun yük değil, isteğin kendisi olabilir: adresi tarayıcıda ya da tek bir istekle dene, kaç saniye sürdüğüne bak.",
+        "rec.timeouts.text": "İstekler işleniyor ama {timeout} saniye içinde bitmiyor. Yavaş veritabanı sorgularını (eksik indeksler), dış servis çağrılarını ve bekleten (senkron) işlemleri incele.",
+        "rec.tooSlow.title": "Tek bir istek bile {timeout} saniyede tamamlanmıyor olabilir",
+        "rec.tooSlow.text": "İsteklerin neredeyse tamamı zaman aşımına uğradı. Volta {timeout} saniyeden uzun süren istekleri zaman aşımı sayar. Sorun yük değil, isteğin kendisi olabilir: adresi tarayıcıda ya da tek bir istekle dene, kaç saniye sürdüğüne bak.",
         "rec.serverErrors.title": "Uygulama hata veriyor ({codes})",
         "rec.serverErrors.text": "Sunucu loglarındaki hata mesajlarına bak. Sadece yük altında ortaya çıkan bir hata olabilir: dolan bağlantı havuzu, eşzamanlılık hataları, yetersiz bellek.",
         "rec.connection.title": "Sunucuyla bağlantı koptu",
@@ -410,7 +411,7 @@ const MESSAGES = {
         "status.502": "Geçersiz ağ geçidi. Aradaki bir sunucu (örneğin Nginx) arkadaki uygulamadan cevap alamadı.",
         "status.503": "Servis kullanılamıyor. Sunucu aşırı yüklü ve yeni istekleri reddediyor.",
         "status.504": "Ağ geçidi zaman aşımı. Aradaki bir sunucu arkadaki uygulamayı beklerken süre doldu.",
-        "status.TIMEOUT": "2,5 saniye içinde cevap gelmedi. Sunucu yük altında yetişemiyor olabilir. İstek sunucu tarafında yine de işlenmiş olabilir.",
+        "status.TIMEOUT": "{timeout} saniye içinde cevap gelmedi. Sunucu yük altında yetişemiyor olabilir. İstek sunucu tarafında yine de işlenmiş olabilir.",
         "status.CONNECTION_REFUSED": "Bağlantı reddedildi. Sunucu çalışmıyor ya da port yanlış.",
         "status.CONNECTION_RESET": "Bağlantı koptu. Sunucu cevap vermeden bağlantıyı kesti, çökmüş ya da yeniden başlatılmış olabilir.",
         "status.NETWORK_ERROR": "Ağ hatası. Sunucuya ulaşılırken beklenmeyen bir sorun oluştu.",
@@ -637,7 +638,7 @@ const MESSAGES = {
         "hint.avg.graph": "yellow line",
         "hint.requests.text": "Total number of completed requests, including errors. On the dashboard, \"Now\" is the request count of the last finished second.",
         "hint.min.text": "The fastest response. Gives an idea of how fast the server can be when idle.",
-        "hint.max.text": "The slowest response. If it is 2,500 ms, at least one request timed out.",
+        "hint.max.text": "The slowest response. If it is {timeoutMs} ms, at least one request timed out.",
         "hint.p95.text": "95% of requests were answered faster than this. It leaves out the slowest 5% and shows the worst case most users experience.",
         "hint.p95.graph": "cyan line",
         "hint.p99.text": "99% of requests were answered faster than this. It shows rare but annoying delays. If it is much higher than p95, some requests are occasionally very slow.",
@@ -649,7 +650,7 @@ const MESSAGES = {
         "hint.errorRate.text": "Share of requests with a server error (5xx) or no response (timeout, connection error). 4xx responses are excluded because they are a deliberate rejection by the server.",
         "hint.errorRate.graph": "red areas",
         "hint.totalData.text": "Total size of responses from the server. Large responses put more load on both the network and the server.",
-        "hint.duration.text": "Time from the first request sent to the last response received. It can be slightly longer than the configured duration because in-flight requests are awaited (up to 2.5 s).",
+        "hint.duration.text": "Time from the first request sent to the last response received. It can be slightly longer than the configured duration because in-flight requests are awaited (up to {timeout} s).",
 
 
         "book.open": "Saved targets",
@@ -745,9 +746,9 @@ const MESSAGES = {
         "rec.overload.title": "The server rejects requests under overload ({codes})",
         "rec.overload.text": "The server deliberately turns away requests beyond its capacity, or a rate limiter kicked in. Review the application's concurrency limit and server resources (CPU, memory).",
         "rec.timeouts.title": "Requests are timing out",
-        "rec.timeouts.text": "Requests are processed but don't finish within 2.5 seconds. Look into slow database queries (missing indexes), external service calls and blocking (synchronous) work.",
-        "rec.tooSlow.title": "Even a single request may not finish within 2.5 seconds",
-        "rec.tooSlow.text": "Almost all requests timed out. Volta counts requests taking longer than 2.5 seconds as timeouts. The problem may be the request itself, not the load: open the address in a browser or send a single request and see how long it takes.",
+        "rec.timeouts.text": "Requests are processed but don't finish within {timeout} seconds. Look into slow database queries (missing indexes), external service calls and blocking (synchronous) work.",
+        "rec.tooSlow.title": "Even a single request may not finish within {timeout} seconds",
+        "rec.tooSlow.text": "Almost all requests timed out. Volta counts requests taking longer than {timeout} seconds as timeouts. The problem may be the request itself, not the load: open the address in a browser or send a single request and see how long it takes.",
         "rec.serverErrors.title": "The application returns errors ({codes})",
         "rec.serverErrors.text": "Check the error messages in the server logs. It may be an error that only appears under load: an exhausted connection pool, concurrency bugs, insufficient memory.",
         "rec.connection.title": "The connection to the server was lost",
@@ -847,7 +848,7 @@ const MESSAGES = {
         "status.502": "Bad gateway. A server in between (e.g. Nginx) got no response from the application behind it.",
         "status.503": "Service unavailable. The server is overloaded and rejecting new requests.",
         "status.504": "Gateway timeout. A server in between timed out waiting for the application behind it.",
-        "status.TIMEOUT": "No response within 2.5 seconds. The server may not be keeping up under load. The request may still have been processed on the server.",
+        "status.TIMEOUT": "No response within {timeout} seconds. The server may not be keeping up under load. The request may still have been processed on the server.",
         "status.CONNECTION_REFUSED": "Connection refused. The server is not running or the port is wrong.",
         "status.CONNECTION_RESET": "Connection reset. The server closed the connection without responding, it may have crashed or restarted.",
         "status.NETWORK_ERROR": "Network error. An unexpected problem occurred while reaching the server.",
@@ -951,13 +952,25 @@ export function getLocale() {
     return getLanguage() === "en" ? "en-US" : "tr-TR";
 }
 
+// Values every text can use without passing them; they come from Volta's settings (config.ts):
+//   {timeout}    request timeout in seconds:  TR "2,5"   · EN "2.5"
+//   {timeoutMs}  the same in milliseconds:    TR "2.500" · EN "2,500"
+function settingParams() {
+    return {
+        timeout: formatNumber(LIMITS.requestTimeoutMs / 1000),
+        timeoutMs: formatNumber(LIMITS.requestTimeoutMs),
+    };
+}
+
 // Returns the text for the key. Placeholders like {name} are filled from params.
 // Falls back to Turkish if missing in the selected language, then to the key itself (so a missing translation stands out).
 export function t(key, params = {}) {
     const lang = getLanguage();
     let text = MESSAGES[lang]?.[key] ?? MESSAGES.tr[key] ?? key;
 
-    for (const [name, value] of Object.entries(params)) {
+    // Setting values only where a text uses them; a caller's own params still win
+    const all = text.includes("{timeout") ? { ...settingParams(), ...params } : params;
+    for (const [name, value] of Object.entries(all)) {
         text = text.replaceAll(`{${name}}`, String(value));
     }
 

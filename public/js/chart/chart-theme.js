@@ -1,5 +1,5 @@
 // The chart's visual constants: colors, line order, point sizes, axis settings.
-
+import { LIMITS } from "../core/limits.js";
 // Order of the datasets (same as the data-series values in the legend row)
 export const SERIES = { AVG: 0, P95: 1, P99: 2, SUCCESS_RPS: 3, SENT_RPS: 4, CONNECTION: 5 };
 
@@ -21,7 +21,7 @@ export const CHART_COLORS = {
 export const SECOND_DOT = { radius: 3.5, hoverRadius: 6, ring: 1.5 };
 
 // Latency axis: ceiling = highest value × 1.2. It only grows, sliding smoothly as it does.
-// Upper limit 2750: latency can't exceed 2500 (timeout), so the 2500 line doesn't stick to the ceiling.
-export const Y_AXIS = { min: 100, cap: 2750, headroom: 1.2, animationMs: 500 };
+// Upper limit: timeout + 10%. Latency can't exceed the timeout, so the timeout line doesn't stick to the ceiling.
+export const Y_AXIS = { min: 100, cap: Math.round(LIMITS.requestTimeoutMs * 1.1), headroom: 1.2, animationMs: 500 };
 
 export const MONO_FONT = { family: "'IBM Plex Mono', monospace", size: 10 };

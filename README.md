@@ -11,6 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f4c21a" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A5%2022.19-339933?logo=node.js&logoColor=white" alt="Node.js 22.19 or newer">
   <img src="https://img.shields.io/badge/platform-Windows%20%C2%B7%20Linux-64d8d7" alt="Tested on Windows and Linux">
+  <a href="https://github.com/ard-daskiran/voltaload/actions/workflows/ci.yml"><img src="https://github.com/ard-daskiran/voltaload/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
 </p>
 
 <p align="center">

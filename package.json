@@ -2,10 +2,30 @@
   "name": "voltaload",
   "version": "1.0.0",
   "private": true,
-  "description": "",
+  "description": "Visual load testing for localhost: live charts and an automatic analysis that explains the results in plain language.",
+  "keywords": [
+    "load-testing",
+    "performance",
+    "benchmark",
+    "stress-test",
+    "localhost",
+    "http",
+    "api"
+  ],
+  "homepage": "https://github.com/ard-daskiran/voltaload#readme",
+  "bugs": {
+    "url": "https://github.com/ard-daskiran/voltaload/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ard-daskiran/voltaload.git"
+  },
+  "license": "MIT",
+  "author": "Arda Daşkıran (https://github.com/ard-daskiran)",
   "engines": {
     "node": ">=22.19.0"
   },
+  "type": "commonjs",
   "scripts": {
     "postinstall": "node scripts/setup.mjs",
     "prestart": "node scripts/setup.mjs --start",
@@ -15,10 +35,6 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.2.0",

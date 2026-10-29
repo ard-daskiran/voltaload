@@ -4,7 +4,8 @@
 const RERUN_STORAGE_KEY = "volta-rerun";
 
 // Leave the settings, go to the home page (the form fills with these settings)
-// settings: { url, method, body, targetRps, duration, loadProfile, stepCount }
+// settings: { url, method, body, headers, targetRps, duration, loadProfile, stepCount }
+// (headers with their real values: sessionStorage stays in this browser tab)
 export function rerunWith(settings) {
     sessionStorage.setItem(RERUN_STORAGE_KEY, JSON.stringify(settings));
     window.location.href = "/";

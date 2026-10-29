@@ -121,6 +121,7 @@ export function createAnalysisCard({ onOpenRecommendations }) {
         if (analysis.stopped) nodes.push(warningRow(t(`analysis.ended.${analysis.endReason}`)));
         if (recTypes.includes("redirects")) nodes.push(warningRow(t("analysis.redirectsNotice")));
         if (recTypes.includes("clientErrors")) nodes.push(warningRow(t("analysis.clientErrorsNotice")));
+        if (recTypes.includes("authErrors")) nodes.push(warningRow(t("analysis.authErrorsNotice")));
         if (recTypes.includes("rateLimited")) nodes.push(warningRow(t("analysis.rateLimitedNotice")));
 
         // Events

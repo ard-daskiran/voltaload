@@ -145,6 +145,7 @@ const REC_STYLE = {
     connection: { icon: "power_off", tone: "problem" },
     tailLatency: { icon: "timeline", tone: "warning" },
     clientErrors: { icon: "rule", tone: "warning" },
+    authErrors: { icon: "key_off", tone: "warning" },
     redirects: { icon: "alt_route", tone: "warning" },
     rateLimited: { icon: "front_hand", tone: "warning" },
     slowButStable: { icon: "speed", tone: "warning" },

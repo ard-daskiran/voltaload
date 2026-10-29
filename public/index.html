@@ -200,24 +200,93 @@
             ></p>
           </div>
 
-          <!-- JSON Body -->
-          <div class="flex flex-col gap-2 group h-32">
-            <label
-              for="body"
-              class="font-data-md text-data-md text-on-surface-variant group-focus-within:text-primary-container transition-colors flex justify-between"
+          <!-- JSON Body and Headers: sections that open on click (core/collapsible.js).
+               Closed, each shows a one-line summary on the right ("48 bytes", "2 headers · 1 hidden"). -->
+          <div class="border border-border-subtle flex flex-col">
+            <!-- JSON Body (POST only; with GET the section is locked) -->
+            <button
+              type="button"
+              id="body-toggle"
+              aria-controls="body-panel"
+              class="w-full flex items-center justify-between gap-2 px-3 py-2.5 font-data-md text-data-md text-on-surface-variant hover:text-primary-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-on-surface-variant"
             >
-              <span data-i18n="form.body">JSON Body</span>
+              <span class="flex items-center gap-1.5">
+                <span
+                  data-chevron
+                  class="material-symbols-outlined text-[18px] transition-transform duration-150"
+                  >chevron_right</span
+                >
+                <span data-i18n="form.body">JSON Body</span>
+              </span>
+              <span id="body-summary" class="text-[12px] text-outline"></span>
+            </button>
+            <div
+              id="body-panel"
+              style="
+                display: grid;
+                grid-template-rows: 0fr;
+                transition: grid-template-rows 150ms ease-out;
+              "
+            >
+              <div class="overflow-hidden">
+                <div class="px-3 pb-3 pt-0.5">
+                  <textarea
+                    id="body"
+                    placeholder='{"email":"test@test.com"}'
+                    class="w-full h-28 resize-none bg-surface-container-lowest border border-border-subtle p-3 font-data-md text-data-md text-secondary focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all overflow-y-auto leading-relaxed"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Headers (dashboard/header-editor.js fills the rows) -->
+            <button
+              type="button"
+              id="headers-toggle"
+              aria-controls="headers-panel"
+              class="w-full flex items-center justify-between gap-2 px-3 py-2.5 border-t border-border-subtle font-data-md text-data-md text-on-surface-variant hover:text-primary-container transition-colors"
+            >
+              <span class="flex items-center gap-1.5">
+                <span
+                  data-chevron
+                  class="material-symbols-outlined text-[18px] transition-transform duration-150"
+                  >chevron_right</span
+                >
+                <span data-i18n="form.headers">Başlıklar</span>
+              </span>
               <span
-                class="text-xs text-border-subtle font-normal"
-                data-i18n="form.optional"
-                >Opsiyonel</span
-              >
-            </label>
-            <textarea
-              id="body"
-              placeholder='{"email":"test@test.com"}'
-              class="w-full h-full resize-none bg-surface-container-lowest border border-border-subtle p-3 font-data-md text-data-md text-secondary focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all overflow-y-auto leading-relaxed"
-            ></textarea>
+                id="headers-summary"
+                class="text-[12px] text-outline"
+              ></span>
+            </button>
+            <div
+              id="headers-panel"
+              style="
+                display: grid;
+                grid-template-rows: 0fr;
+                transition: grid-template-rows 150ms ease-out;
+              "
+            >
+              <div class="overflow-hidden">
+                <div class="px-3 pb-3 pt-0.5 flex flex-col gap-2">
+                  <div id="header-rows" class="flex flex-col gap-2"></div>
+                  <button
+                    type="button"
+                    id="header-add"
+                    class="self-start flex items-center gap-1 font-data-md text-[12px] text-secondary hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span class="material-symbols-outlined text-[16px]"
+                      >add</span
+                    >
+                    <span data-i18n="form.headers.add">Başlık ekle</span>
+                  </button>
+                  <p
+                    class="font-data-md text-[11px] leading-snug text-outline"
+                    data-i18n="form.headers.hint"
+                  ></p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <button

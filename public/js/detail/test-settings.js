@@ -1,10 +1,30 @@
 // The detail page's left column: the test's settings (read-only) and "Run again".
 
-import { $ } from "../core/dom.js";
+import { $, el } from "../core/dom.js";
 import { t, formatNumber, getLocale } from "../core/i18n.js";
 import { runStatusStyle, runStatusLabel } from "../status/run-status.js";
 import { rerunWith } from "../core/rerun.js";
 import { prettyJson } from "../core/json.js";
+import { displayHeaderValue } from "../core/headers.js";
+
+// One line per header: name, value (hidden ones as "••••" with a lock icon)
+function renderHeaders(container, headers) {
+    container.replaceChildren(
+        ...headers.map((header) => {
+            const row = el("div", "flex items-start gap-2 min-w-0");
+            row.append(
+                el("span", "text-secondary shrink-0", `${header.name}:`),
+                el("span", "text-on-surface break-all min-w-0", displayHeaderValue(header))
+            );
+            if (header.masked) {
+                const lock = el("span", "material-symbols-outlined text-[16px] text-outline shrink-0", "lock");
+                lock.title = t("detail.headerMasked");
+                row.append(lock);
+            }
+            return row;
+        })
+    );
+}
 
 function renderStatus(el, status) {
     const style = runStatusStyle(status);
@@ -49,6 +69,11 @@ export function createTestSettings() {
         const hasBody = Boolean(testRun.body);
         $("d-body-block").hidden = !hasBody;
         if (hasBody) $("d-body").textContent = prettyJson(testRun.body);
+
+        // Older tests have no headers (empty list)
+        const headers = testRun.headers ?? [];
+        $("d-headers-block").hidden = headers.length === 0;
+        renderHeaders($("d-headers"), headers);
     }
 
     // Leave the settings for the home page and go there (the form fills with these settings)
@@ -59,6 +84,7 @@ export function createTestSettings() {
             url: current.url,
             method: current.method,
             body: current.body,
+            headers: current.headers,
             targetRps: current.targetRps,
             duration: current.duration,
             loadProfile: current.loadProfile,

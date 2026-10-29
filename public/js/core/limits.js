@@ -3,7 +3,7 @@
 // Every module that imports this waits for it (top-level await); locally it takes a few milliseconds.
 // If the settings can't be loaded, the defaults below are used so the page still works.
 
-const DEFAULTS = { requestTimeoutMs: 2500, maxBodyKb: 100 };
+const DEFAULTS = { requestTimeoutMs: 2500, maxBodyKb: 100, maxHeaders: 20, maxHeaderBytes: 8192 };
 
 async function loadLimits() {
     try {

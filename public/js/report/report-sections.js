@@ -21,6 +21,7 @@ import {
 import { REPORT_CHART_COLORS } from "./report-chart.js";
 import { latencyLevel } from "../core/latency.js";
 import { prettyJson } from "../core/json.js";
+import { displayHeaderValue } from "../core/headers.js";
 
 // Dark state colors for a white background (counterparts of the app's colors)
 const REPORT_HEALTH = {
@@ -139,6 +140,7 @@ function resultSection(analysis, testRun) {
         analysis.stopped && t(`analysis.ended.${analysis.endReason}`),
         recTypes.includes("redirects") && t("analysis.redirectsNotice"),
         recTypes.includes("clientErrors") && t("analysis.clientErrorsNotice"),
+        recTypes.includes("authErrors") && t("analysis.authErrorsNotice"),
         recTypes.includes("rateLimited") && t("analysis.rateLimitedNotice"),
     ].filter(Boolean);
 
@@ -396,7 +398,14 @@ function settingsBlock(testRun, summary) {
         { class: "keep" },
         h("div", { class: "sub-title" }, t("report.settings")),
         h("dl", { class: "kv" }, rows.map(([label, value]) => [h("dt", {}, label), h("dd", {}, value)])),
-        testRun.body ? [h("div", { class: "sub-title" }, t("form.body")), h("pre", { class: "body" }, prettyJson(testRun.body))] : null
+        testRun.body ? [h("div", { class: "sub-title" }, t("form.body")), h("pre", { class: "body" }, prettyJson(testRun.body))] : null,
+        // Hidden values as "••••" (the report is the page most likely to be shared)
+        testRun.headers?.length
+            ? [
+                h("div", { class: "sub-title" }, t("form.headers")),
+                h("pre", { class: "body" }, testRun.headers.map((header) => `${header.name}: ${displayHeaderValue(header)}`).join("\n")),
+            ]
+            : null
     );
 }
 

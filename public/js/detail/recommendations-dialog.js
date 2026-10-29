@@ -39,6 +39,7 @@ function recommendationCard(rec, testRun) {
                 url: testRun.url,
                 method: testRun.method,
                 body: testRun.body,
+                headers: testRun.headers,
                 targetRps: view.test.targetRps,
                 duration: view.test.duration,
                 loadProfile: view.test.loadProfile,

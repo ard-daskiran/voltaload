@@ -1,12 +1,15 @@
-// Test form: fields, test type, step preview, locking, status text,
+// Test form: fields, test type, step preview, JSON Body and Headers sections, locking, status text,
 // "Run again" settings and the draft kept across language changes.
-// Limits (RPS, duration, steps) come from the server (/api/limits): the single source is config.ts.
+// Limits (RPS, duration, steps, headers) come from the server (/api/limits): the single source is config.ts.
 
 import { $ } from "../core/dom.js";
 import { t, formatNumber } from "../core/i18n.js";
 import { takeRerunSettings } from "../core/rerun.js";
 import { withDefaultScheme } from "../core/url.js";
 import { prettyJson } from "../core/json.js";
+import { createCollapsible } from "../core/collapsible.js";
+import { checkHeaders } from "../core/headers.js";
+import { createHeaderEditor } from "./header-editor.js";
 
 // The page reloads when the language changes: values typed into the form but not yet started are kept under this key
 const DRAFT_STORAGE_KEY = "volta-form-draft";
@@ -14,6 +17,13 @@ const DRAFT_STORAGE_KEY = "volta-form-draft";
 // Limits from the server. Until they arrive (or if they can't), the form doesn't validate on its own:
 // the server checks every request anyway, and the error message comes from there.
 let limits = null;
+
+// Size of the JSON Body for its summary line: "48 bytes", "1,2 KB"
+function sizeText(bytes) {
+    return bytes < 1024
+        ? t("form.body.bytes", { value: formatNumber(bytes) })
+        : t("form.body.kb", { value: formatNumber(bytes / 1024, 1) });
+}
 
 // RPS of the steps: same rounding as the scheduler on the server
 function stepTargets(rps, steps) {
@@ -59,6 +69,9 @@ export function createTestForm() {
     const stepCountInput = $("stepCount");
     const stepPreview = $("step-preview");
     const bodyInput = $("body");
+    const bodyToggle = $("body-toggle");
+    const bodySummary = $("body-summary");
+    const headersSummary = $("headers-summary");
     const startBtn = $("start-btn");
     const stopBtn = $("stop-btn");
     const statusText = $("status-text");
@@ -67,6 +80,42 @@ export function createTestForm() {
     const bookBtn = $("target-book-btn");
     let profile = "CONSTANT";
     let locked = false;
+
+    const bodySection = createCollapsible(bodyToggle, $("body-panel"));
+    const headersSection = createCollapsible($("headers-toggle"), $("headers-panel"));
+
+    // Summary lines shown on the right of the section titles (visible while the sections are closed)
+    function updateSummaries() {
+        if (methodSelect.value === "GET") {
+            bodySummary.textContent = t("form.body.postOnly");
+        } else {
+            const bytes = new Blob([bodyInput.value.trim()]).size;
+            bodySummary.textContent = bytes === 0 ? t("form.body.empty") : sizeText(bytes);
+        }
+
+        const headers = headerEditor.getHeaders();
+        const hidden = headers.filter((h) => h.masked).length;
+        const parts = [];
+        if (headers.length === 0) parts.push(t("form.headers.none"));
+        else parts.push(headers.length === 1 ? t("form.headers.countOne") : t("form.headers.count", { count: headers.length }));
+        if (hidden > 0) parts.push(t("form.headers.hidden", { count: hidden }));
+        headersSummary.textContent = parts.join(" · ");
+    }
+
+    const headerEditor = createHeaderEditor({
+        container: $("header-rows"),
+        addButton: $("header-add"),
+        onChange: updateSummaries,
+        onNotice: (text) => setStatus(text),
+    });
+
+    // GET sends no body: the JSON Body section is closed and locked (what's typed in it is kept for POST)
+    function updateMethod() {
+        const isGet = methodSelect.value === "GET";
+        if (isGet) bodySection.close();
+        bodyToggle.disabled = isGet;
+        updateSummaries();
+    }
 
     function updatePreview() {
         if (profile !== "STEPPED") return;
@@ -162,6 +211,8 @@ export function createTestForm() {
         for (const el of [urlInput, bookBtn, methodSelect, rpsInput, durationInput, stepCountInput, bodyInput, ...profileButtons]) {
             el.disabled = isLocked;
         }
+        // The sections can still be opened during the test to see what's being sent, but not edited
+        headerEditor.setDisabled(isLocked);
         startBtn.hidden = isLocked;
         stopBtn.hidden = !isLocked;
         liveBadge.hidden = !isLocked;
@@ -198,8 +249,17 @@ export function createTestForm() {
             try {
                 body = JSON.parse(bodyInput.value);
             } catch {
+                // Open the section so the problem is visible
+                bodySection.open();
                 return { ok: false, error: t("state.invalidJson") };
             }
+        }
+
+        const headers = headerEditor.getHeaders();
+        const headerError = checkHeaders(headers);
+        if (headerError) {
+            headersSection.open();
+            return { ok: false, error: headerError };
         }
 
         return {
@@ -208,6 +268,7 @@ export function createTestForm() {
                 url,
                 method: methodSelect.value,
                 body,
+                headers,
                 targetRps,
                 duration,
                 loadProfile: profile,
@@ -226,8 +287,10 @@ export function createTestForm() {
         durationInput.value = config.durationSeconds;
         // Indented so the body is readable
         bodyInput.value = prettyJson(config.body ?? "");
+        headerEditor.setHeaders(config.headers ?? []);
         if (type === "STEPPED") stepCountInput.value = config.profile.stepCount;
         setProfile(type);
+        updateMethod();
     }
 
     // Fill the form with the given settings (shared by rerun and the draft)
@@ -239,7 +302,10 @@ export function createTestForm() {
         durationInput.value = settings.duration ?? "";
         if (settings.stepCount) stepCountInput.value = settings.stepCount;
         bodyInput.value = settings.body ?? "";
+        // Older saved settings have no headers
+        headerEditor.setHeaders(settings.headers ?? []);
         setProfile(settings.loadProfile === "STEPPED" ? "STEPPED" : "CONSTANT");
+        updateMethod();
     }
 
     // Fill the form if we came from "Run again" or a recommendation. Returns true if it was filled.
@@ -266,6 +332,7 @@ export function createTestForm() {
                     duration: durationInput.value,
                     stepCount: stepCountInput.value,
                     body: bodyInput.value,
+                    headers: headerEditor.getHeaders(),
                     loadProfile: profile,
                 })
             );
@@ -303,8 +370,11 @@ export function createTestForm() {
     for (const input of [rpsInput, durationInput, stepCountInput]) {
         input.addEventListener("input", updatePreview);
     }
+    methodSelect.addEventListener("change", updateMethod);
+    bodyInput.addEventListener("input", updateSummaries);
 
     setProfile("CONSTANT");
+    updateMethod();
     loadLimits();
 
     // For the target book: read / write the URL in the form

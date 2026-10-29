@@ -57,6 +57,11 @@ export const MAX_URL_LENGTH = 2000;
 // Largest JSON body accepted for a test (KB). Allowed: 1–1024. The body is sent with every request and saved with the test.
 export const MAX_BODY_KB = 100;
 
+// Custom request headers: how many a test can have, and their total size (name + value, in bytes).
+// Most servers reject headers above 8–16 KB with "431 Request Header Fields Too Large". Allowed: 1–16384 bytes.
+export const MAX_HEADERS = 20;
+export const MAX_HEADER_BYTES = 8192;
+
 // Longest text allowed in search boxes (history list and target book)
 export const MAX_SEARCH_LENGTH = 200;
 
@@ -71,6 +76,7 @@ const RPS_CEILING = 4000;
 
 const REQUEST_TIMEOUT_CEILING_MS = 30000;
 const BODY_CEILING_KB = 1024;
+const HEADER_BYTES_CEILING = 16384;
 
 export function validateConfig(): string[] {
   const problems: string[] = [];
@@ -148,11 +154,18 @@ export function validateConfig(): string[] {
   if (REQUEST_TIMEOUT_MS > REQUEST_TIMEOUT_CEILING_MS) {
     problems.push(`REQUEST_TIMEOUT_MS cannot be higher than ${REQUEST_TIMEOUT_CEILING_MS} (current: ${REQUEST_TIMEOUT_MS})`);
   }
-  wholeAtLeast("MAX_BODY_KB", MAX_BODY_KB, 1);
+    wholeAtLeast("MAX_BODY_KB", MAX_BODY_KB, 1);
   if (MAX_BODY_KB > BODY_CEILING_KB) {
     problems.push(`MAX_BODY_KB cannot be higher than ${BODY_CEILING_KB} (current: ${MAX_BODY_KB})`);
   }
-  
+
+  // Custom headers
+  wholeAtLeast("MAX_HEADERS", MAX_HEADERS, 1);
+  wholeAtLeast("MAX_HEADER_BYTES", MAX_HEADER_BYTES, 1);
+  if (MAX_HEADER_BYTES > HEADER_BYTES_CEILING) {
+    problems.push(`MAX_HEADER_BYTES cannot be higher than ${HEADER_BYTES_CEILING} (current: ${MAX_HEADER_BYTES})`);
+  }
+
   wholeAtLeast("MAX_URL_LENGTH", MAX_URL_LENGTH, 1);
   wholeAtLeast("MAX_SEARCH_LENGTH", MAX_SEARCH_LENGTH, 1);
   

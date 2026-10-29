@@ -12,6 +12,9 @@ model TestRun {
   url       String
   method    String   @default("GET")
   body      String?
+  // Custom headers as JSON: [{ "name": "...", "value": "...", "masked": true }]
+  // Empty for tests without headers and for tests made before this field was added.
+  headers   String?
   targetRps Int
   duration  Int
   createdAt DateTime @default(now())

@@ -7,6 +7,7 @@ import { computeTestSummary } from "./summary.js";
 import { summarizeWindow } from "./windowStats.js";
 import { DB_FLUSH_INTERVAL_MS, LIVE_WINDOW_MS, LIVE_EMIT_DELAY_MS, WORKER_LAG_WARNING_MS } from "../config.js";
 import { apiError, errorBody, type ApiError } from "../errors.js";
+import type { RequestHeader } from "../services/startRequest.js";
 
 export type FinalStatus = "COMPLETED" | "STOPPED" | "FAILED";
 
@@ -20,6 +21,7 @@ interface StartTestRunParams {
   url: string;
   method: string;
   body?: string;
+  headers: RequestHeader[];
   pinnedAddress: string;
   pinnedFamily: 4 | 6;
   profile?: LoadProfile;
@@ -40,6 +42,7 @@ interface ActiveRun {
     url: string;
     method: string;
     body?: string; // So the form is filled with the body too when the page reconnects
+    headers: RequestHeader[]; // Same for the headers (with their real values: the UI is only reachable from this computer)
     targetRps: number;
     durationSeconds: number;
     profile?: LoadProfile;
@@ -269,6 +272,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
         url: params.url,
         method: params.method,
         body: params.body,
+        headers: params.headers,
         targetRps: params.targetRps,
         durationSeconds: params.durationSeconds,
         profile: params.profile,
@@ -338,6 +342,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       url: params.url,
       method: params.method,
       body: params.body,
+      headers: params.headers,
       pinnedAddress: params.pinnedAddress,
       pinnedFamily: params.pinnedFamily,
       profile: params.profile,

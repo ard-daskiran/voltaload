@@ -26,6 +26,7 @@ export type Recommendation =
   | { type: "connection" }
   | { type: "tailLatency"; p95: number; p99: number }
   | { type: "clientErrors"; share: number }
+  | { type: "authErrors"; share: number; codes: string[] }
   | { type: "redirects"; share: number; codes: string[] }
   | { type: "rateLimited" }
   | { type: "slowButStable"; p95: number }
@@ -89,7 +90,15 @@ export function buildRecommendations(totals: GroupStats, verdict: Verdict): Reco
   // Warnings about the test settings (excluding 429: the server returns it on purpose, it has its own warning)
   const clientShare = share(codes.filter((c) => Number(c) >= 400 && Number(c) < 500 && c !== "429"));
   const clientMajority = clientShare >= T.recommend.clientErrorShare;
-  if (clientMajority) list.push({ type: "clientErrors", share: clientShare });
+
+  // Most responses are 401/403: the server rejected the requests as unauthorized (missing, wrong or expired token).
+  // Gets its own recommendation ("check your headers") instead of the general "check your test settings" one.
+  const authShare = share(["401", "403"]);
+  if (authShare >= T.recommend.clientErrorShare) {
+    list.push({ type: "authErrors", share: authShare, codes: present(["401", "403"]) });
+  } else if (clientMajority) {
+    list.push({ type: "clientErrors", share: clientShare });
+  }
 
   const redirectCodes = codes.filter((c) => REDIRECT_CODES.includes(c)).sort();
   const redirectShare = share(redirectCodes);

@@ -12,6 +12,14 @@ export type ErrorCode =
   | "INVALID_STEP_COUNT"
   | "STEP_TOO_SHORT"
   | "STEP_RPS_TOO_LOW"
+  // Custom headers
+  | "INVALID_HEADERS"
+  | "TOO_MANY_HEADERS"
+  | "HEADER_NAME_INVALID"
+  | "HEADER_VALUE_INVALID"
+  | "HEADER_FORBIDDEN"
+  | "HEADER_DUPLICATE"
+  | "HEADERS_TOO_LARGE"
   // Target address
   | "URL_MALFORMED"
   | "URL_PROTOCOL"
@@ -57,6 +65,15 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   INVALID_STEP_COUNT: (p) => `Steps must be between ${p.min} and ${p.max}.`,
   STEP_TOO_SHORT: (p) => `Each step must last at least ${p.min}s. Increase the duration or reduce the steps.`,
   STEP_RPS_TOO_LOW: (p) => `Max RPS cannot be lower than the number of steps (${p.min}).`,
+  INVALID_HEADERS: () => "Headers must be a list of name and value pairs.",
+  TOO_MANY_HEADERS: (p) => `A test can have at most ${p.max} headers.`,
+  HEADER_NAME_INVALID: (p) =>
+    `The header name "${p.name}" is invalid. Use English letters, digits and symbols like - and _, without spaces.`,
+  HEADER_VALUE_INVALID: (p) =>
+    `The value of "${p.name}" contains characters that can't be sent in a header (non-English letters or line breaks).`,
+  HEADER_FORBIDDEN: (p) => `The "${p.name}" header is managed by Volta and can't be set.`,
+  HEADER_DUPLICATE: (p) => `The "${p.name}" header is used more than once.`,
+  HEADERS_TOO_LARGE: (p) => `The headers are too large (max ${p.max} bytes in total).`,
   URL_MALFORMED: () => "Invalid URL format.",
   URL_PROTOCOL: () => "Only http and https addresses can be tested.",
   URL_UNSPECIFIED: () => "0.0.0.0 is not a target address. Use localhost instead.",

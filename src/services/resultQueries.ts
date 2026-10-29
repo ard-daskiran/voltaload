@@ -8,7 +8,7 @@ import { computeTestSummary } from "../engine/summary.js";
 import { targetRpsAt } from "../engine/scheduler.js";
 import { summarizeWindow } from "../engine/windowStats.js";
 import { LIVE_WINDOW_MS } from "../config.js";
-import { serializeRun, profileOf } from "./testRunFormat.js";
+import { serializeRun, profileOf, parseHeaders } from "./testRunFormat.js";
 import { targetNamesFor } from "./savedTargets.js";
 
 type TestRunRecord = NonNullable<Awaited<ReturnType<typeof prisma.testRun.findUnique>>>;
@@ -116,7 +116,11 @@ export async function getTestDetail(id: string) {
   const names = await targetNamesFor([testRun.url]);
 
   return {
-    testRun: { ...serializeRun(testRun), targetName: names.get(testRun.url) ?? null },
+    testRun: {
+      ...serializeRun(testRun),
+      headers: parseHeaders(testRun.headers),
+      targetName: names.get(testRun.url) ?? null,
+    },
     summary: await loadSummary(testRun),
   };
 }

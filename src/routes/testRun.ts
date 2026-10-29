@@ -56,6 +56,8 @@ export function createTestRunRouter(io: Server): Router {
           url: input.url,
           method: input.method,
           body: bodyString ?? null,
+          // Empty for a test without headers (same as tests made before headers were added)
+          headers: input.headers.length > 0 ? JSON.stringify(input.headers) : null,
           targetRps: input.targetRps,
           duration: input.duration,
           loadProfile: input.profile.type,
@@ -70,6 +72,7 @@ export function createTestRunRouter(io: Server): Router {
         url: input.url,
         method: input.method,
         body: bodyString,
+        headers: input.headers,
         pinnedAddress: security.target.address,
         pinnedFamily: security.target.family,
         profile: input.profile,

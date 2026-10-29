@@ -18,6 +18,7 @@ interface StartMessage {
   url: string;
   method: string;
   body?: string;
+  headers: { name: string; value: string }[];
   pinnedAddress: string;
   pinnedFamily: 4 | 6;
   profile?: LoadProfile;
@@ -38,26 +39,38 @@ function classifyError(err: any): ErrorType {
   return "NETWORK_ERROR";
 }
 
+// The request headers, built once per test (not for every request).
+// The user's headers come last, so they replace Volta's defaults (e.g. their own Content-Type or Accept-Encoding).
+function buildHeaders(sendsBody: boolean, userHeaders: { name: string; value: string }[]): Record<string, string> {
+  const headers: Record<string, string> = {
+    // Ask for a compressed response like a browser does. undici doesn't decompress it.
+    "accept-encoding": "gzip, deflate, br",
+    ...(sendsBody ? { "content-type": "application/json" } : {}),
+  };
+  // Names are lowercased so a user header replaces the default with the same name instead of being sent next to it
+  for (const header of userHeaders) {
+    headers[header.name.toLowerCase()] = header.value;
+  }
+  return headers;
+}
+
+// body: undefined if the test sends no body (GET, or POST without a body)
 async function makeRequest(
   agent: Agent,
   url: string,
   method: string,
-  body: string | undefined
+  body: string | undefined,
+  headers: Record<string, string>
 ): Promise<RequestResult> {
   const start = performance.now();
   const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-  const sendsBody = method !== "GET" && body !== undefined;
 
   try {
     const response = await request(url, {
       dispatcher: agent,
       method: method as any,
-      body: sendsBody ? body : undefined,
-      headers: {
-        // Ask for a compressed response like a browser does. undici doesn't decompress it.
-        "accept-encoding": "gzip, deflate, br",
-        ...(sendsBody ? { "content-type": "application/json" } : {}),
-      },
+      body,
+      headers,
       signal,
     });
 
@@ -104,10 +117,15 @@ port.on("message", async (message: StartMessage) => {
     url,
     method,
     body,
+    headers: userHeaders,
     pinnedAddress,
     pinnedFamily,
     profile,
   } = message;
+
+  const sendsBody = method !== "GET" && body !== undefined;
+  const requestBody = sendsBody ? body : undefined;
+  const headers = buildHeaders(sendsBody, userHeaders ?? []);
 
   // DNS pinning: every connection goes to the address approved by the main thread.
   // Node can do the address lookup in two forms (single address or list); we answer both.
@@ -157,7 +175,7 @@ port.on("message", async (message: StartMessage) => {
     targetRps,
     durationSeconds,
     () => {
-      const pending: Promise<void> = makeRequest(agent, url, method, body)
+      const pending: Promise<void> = makeRequest(agent, url, method, requestBody, headers)
         .then((result) => {
           batch.push(result);
         })

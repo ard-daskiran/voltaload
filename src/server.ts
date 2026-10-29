@@ -20,6 +20,8 @@ import {
   MIN_STEP_DURATION_SECONDS,
   REQUEST_TIMEOUT_MS,
   MAX_BODY_KB,
+  MAX_HEADERS,
+  MAX_HEADER_BYTES,
   validateConfig,
 } from "./config.js";
 import { createSavedTargetRouter } from "./routes/savedTargets.js";
@@ -69,7 +71,10 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: `${MAX_BODY_KB}kb` }));
+// The test start request carries the JSON body and the headers. Room is left for the headers on top of the body
+// (twice their size, for the escaping in JSON, plus 1 KB for the other fields), so a body at its limit plus headers still fits.
+const REQUEST_LIMIT_KB = MAX_BODY_KB + Math.ceil((MAX_HEADER_BYTES * 2) / 1024) + 1;
+app.use(express.json({ limit: `${REQUEST_LIMIT_KB}kb` }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.get("/api/health", (req, res) => {
@@ -89,6 +94,8 @@ app.get("/api/limits", (req, res) => {
     minStepDurationSeconds: MIN_STEP_DURATION_SECONDS,
     requestTimeoutMs: REQUEST_TIMEOUT_MS,
     maxBodyKb: MAX_BODY_KB,
+    maxHeaders: MAX_HEADERS,
+    maxHeaderBytes: MAX_HEADER_BYTES,
   });
 });
 

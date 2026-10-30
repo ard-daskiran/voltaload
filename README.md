@@ -46,6 +46,7 @@ It runs on your own computer and needs nothing but Node.js.
 - **Report:** a printable page you can save as a PDF.
 - **Saved targets:** keep the addresses you test often.
 - **GET and POST** requests, with an optional JSON body.
+- **Custom headers:** send a token, a cookie or an API key to test endpoints that need a login. Values you hide stay masked on the test details and in the report.
 - **English and Turkish** interface.
 
 ## Requirements
@@ -116,7 +117,7 @@ Results depend on your computer. Keep in mind that Volta and the server you test
 
 ## Your data
 
-Test results stay on your computer, in a local SQLite file (`prisma/dev.db`). Volta doesn't send them anywhere.
+Test results stay on your computer, in a local SQLite file (`prisma/dev.db`). Volta doesn't send them anywhere. Custom header values (such as tokens) are saved there too, as plain text, even if you hide them in the interface.
 
 The interface loads its styles, fonts and some libraries from public CDNs, so your browser needs an internet connection when it opens the page.
 

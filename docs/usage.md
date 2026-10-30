@@ -27,24 +27,46 @@ Only addresses on your own computer or local network can be tested (see [Safety]
 - **GET** or **POST**.
 - **JSON Body** is optional and sent only with POST requests. It must be valid JSON; Volta checks it before starting. Every request in the test sends the same body.
 
+**JSON Body** and **Headers** are sections that open with a click. Closed, each shows a short summary on the right (_48 bytes_, _2 headers · 1 hidden_). With GET, JSON Body is locked. If something in a section is invalid when you start, it opens by itself and shows the problem.
+
+### Headers
+
+Optional. Use them to test endpoints that need a token, a cookie or an API key. Open **Headers** and press **+ Add header**. Each row has a name and a value, for example:
+
+| Name              | Value                  |
+| ----------------- | ---------------------- |
+| `Authorization`   | `Bearer eyJhbGciOi...` |
+| `Accept-Language` | `tr`                   |
+
+- Headers are sent with every request, with GET as well as POST.
+- **Pasting:** paste lines like `Authorization: Bearer ...` into a name field and Volta splits them into rows, one per line. Lines copied from your browser's developer tools or from a curl command (`-H "Name: value"`) work too.
+- A header with the same name as one Volta sends itself replaces it, for example your own `Content-Type` or `Accept-Encoding`.
+- Up to 20 headers and 8 KB in total by default (see [Configuration](configuration.md#requests)).
+- **Names:** English letters, digits and symbols like `-` and `_`, without spaces. **Values:** no letters like `ş` or `ğ`; HTTP headers don't support them.
+- Some headers are managed by Volta and can't be set: `Host`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Keep-Alive`, `Upgrade`, `TE`, `Trailer` and `Expect`. When pasting, they're skipped with a note.
+
+**Hiding values.** The lock icon on a row hides its value on the test details and in the report, for example `Authorization: Bearer ••••••Oi3x`. Rows named `Authorization`, `Proxy-Authorization` or `Cookie`, or with `token`, `key`, `secret` or `password` in their name, are locked automatically. Locking needs no confirmation; unlocking asks first, because the value will then appear in plain text in the report.
+
+Hiding only changes what's shown. The test still sends the real value, **RUN AGAIN** fills the form with it, and it's saved in the local database file (`prisma/dev.db`) as plain text. Don't share that file, and use test tokens rather than real ones where you can.
+
 ### Test type
 
 **Constant Load:** the same number of requests every second for the whole test.
 
-| Field | Meaning |
-|---|---|
+| Field          | Meaning                                                    |
+| -------------- | ---------------------------------------------------------- |
 | Requests / sec | How many requests to send each second (10–1000 by default) |
-| Duration (s) | How long the test runs (1–60 seconds by default) |
+| Duration (s)   | How long the test runs (1–60 seconds by default)           |
 
 Use it to check whether your server handles a specific load, for example the traffic you expect at peak time.
 
 **Stepped Ramp:** the load rises in equal steps, so you can see where your server starts to struggle.
 
-| Field | Meaning |
-|---|---|
-| Max RPS | Requests per second in the last step |
+| Field        | Meaning                                          |
+| ------------ | ------------------------------------------------ |
+| Max RPS      | Requests per second in the last step             |
 | Duration (s) | Total duration, shared equally between the steps |
-| Steps | Number of steps (2–10 by default) |
+| Steps        | Number of steps (2–10 by default)                |
 
 The form shows the plan as you type, for example:
 
@@ -83,7 +105,7 @@ Hover over a point to see the details of that moment: latency values and how man
 
 ### Cards, status codes and request log
 
-- **AVERAGE, REQUESTS, MIN, MAX:** totals for the whole test. The small *Now* value under each one is the last finished second.
+- **AVERAGE, REQUESTS, MIN, MAX:** totals for the whole test. The small _Now_ value under each one is the last finished second.
 - **Status Codes:** every status code and error type with its count and share. Hover over a row for an explanation.
 - **Request Log:** one line per second, for example `[5s] 200 req avg 52 ms max 61 ms 200×200`.
 
@@ -95,13 +117,13 @@ Press **STOP TEST** to end the test early. The results so far are saved and anal
 
 ### Reloading the page or losing the connection
 
-- **Reloading during a test** is safe. The page reconnects, refills the form and redraws the chart from the start.
+- **Reloading during a test** is safe. The page reconnects, refills the form (headers included) and redraws the chart from the start.
 - **If Volta shuts down** while the page is open, a box appears saying the connection was lost, and keeps trying to reconnect. When Volta is back, reload the page.
-- **If Volta shuts down during a test,** the test is marked *Interrupted* the next time Volta starts, and the part that ran is still analyzed.
+- **If Volta shuts down during a test,** the test is marked _Interrupted_ the next time Volta starts, and the part that ran is still analyzed.
 
 ### After the test
 
-- The form shows *Test completed.* and the chart stays on screen until you start a new test.
+- The form shows _Test completed._ and the chart stays on screen until you start a new test.
 - Open the test from **TEST HISTORY** to see its analysis.
 - If you tested an address that isn't in your saved targets at least twice, Volta offers to save it. Choose **NO** and it won't ask again for that address.
 
@@ -122,15 +144,15 @@ Wherever a test's address is saved, Volta shows the name above it: in the histor
 
 The **TEST HISTORY** page lists every test, newest first.
 
-| Column | Meaning |
-|---|---|
-| Date / Time | When the test started |
-| Target URL | The name (if saved) and the address. The copy icon copies the address. |
-| Method | GET or POST |
+| Column       | Meaning                                                                           |
+| ------------ | --------------------------------------------------------------------------------- |
+| Date / Time  | When the test started                                                             |
+| Target URL   | The name (if saved) and the address. The copy icon copies the address.            |
+| Method       | GET or POST                                                                       |
 | Avg. Latency | Average response time with p95 underneath. Yellow from 500 ms, red from 1 second. |
-| Actual RPS | Requests completed per second |
-| Duration | Actual duration |
-| Status | Running, Completed, Stopped, Failed or Interrupted |
+| Actual RPS   | Requests completed per second                                                     |
+| Duration     | Actual duration                                                                   |
+| Status       | Running, Completed, Stopped, Failed or Interrupted                                |
 
 - **Search** finds tests by address or saved name.
 - **All / GET / POST** filters by method.
@@ -152,7 +174,7 @@ Opens when you click a test in the history list.
 
 **Left column**
 
-- **Test Settings:** address, method, test type, RPS, duration, status, date and the JSON body, if any. **RUN AGAIN** fills the dashboard form with these settings, so you can review them and start the same test.
+- **Test Settings:** address, method, test type, RPS, duration, status, date, and the JSON body and headers, if any. Hidden header values appear as `••••` with a lock icon. **RUN AGAIN** fills the dashboard form with these settings (headers with their real values), so you can review them and start the same test.
 - **Analysis:** the verdict, estimated capacity, a summary sentence, warnings, a timeline of events and a **RECOMMENDATIONS** button. Recommendations can include a ready-made follow-up test: **RUN THIS TEST** fills the form with it. See [Reading the results](reading-results.md).
 
 **Right column**
@@ -167,9 +189,9 @@ A banner appears at the top if most responses were redirects: Volta doesn't foll
 
 ## Report
 
-**GET REPORT** on the test details opens a printable report in a new tab: the result, key metrics, the chart, events, steps, recommendations, status codes, test settings and a short glossary.
+**GET REPORT** on the test details opens a printable report in a new tab: the result, key metrics, the chart, events, steps, recommendations, status codes, test settings and a short glossary. Hidden header values appear as `••••` in the report too.
 
-Press **SAVE AS PDF** and choose *Save as PDF* as the destination in your browser's print dialog.
+Press **SAVE AS PDF** and choose _Save as PDF_ as the destination in your browser's print dialog.
 
 The report has its own language switch, so you can produce it in English or Turkish regardless of the language you use in Volta.
 

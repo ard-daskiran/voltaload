@@ -46,6 +46,7 @@ Kendi bilgisayarında çalışır ve Node.js dışında hiçbir şeye ihtiyaç d
 - **Rapor:** PDF olarak kaydedebileceğin, yazdırılabilir bir sayfa.
 - **Kayıtlı hedefler:** Sık test ettiğin adresleri sakla.
 - **GET ve POST** istekleri, isteğe bağlı JSON gövdesiyle.
+- **Özel başlıklar:** Giriş gerektiren adresleri test etmek için token, çerez ya da API anahtarı gönder. Gizlediğin değerler test detayında ve raporda maskeli görünür.
 - **İngilizce ve Türkçe** arayüz.
 
 ## Gereksinimler
@@ -116,7 +117,7 @@ Sonuçlar bilgisayarına göre değişir. Volta ile test ettiğin sunucunun gene
 
 ## Verilerin
 
-Test sonuçları bilgisayarında, yerel bir SQLite dosyasında (`prisma/dev.db`) kalır. Volta onları hiçbir yere göndermez.
+Test sonuçları bilgisayarında, yerel bir SQLite dosyasında (`prisma/dev.db`) kalır. Volta onları hiçbir yere göndermez. Özel başlık değerleri (token gibi) de arayüzde gizlesen bile orada düz metin olarak saklanır.
 
 Arayüz stillerini, yazı tiplerini ve bazı kütüphaneleri herkese açık CDN'lerden yükler; bu yüzden sayfa açılırken tarayıcının internete bağlı olması gerekir.
 

@@ -27,24 +27,46 @@ Sadece kendi bilgisayarındaki ya da yerel ağındaki adresler test edilebilir (
 - **GET** ya da **POST**.
 - **JSON Body** isteğe bağlıdır ve sadece POST isteklerinde gönderilir. Geçerli bir JSON olmalı; Volta başlamadan önce kontrol eder. Testteki her istek aynı gövdeyi gönderir.
 
+**JSON Body** ve **Başlıklar**, tıklayınca açılan bölümlerdir. Kapalıyken sağ tarafta kısa bir özet gösterirler (_48 bayt_, _2 başlık · 1 gizli_). GET seçiliyken JSON Body kilitlidir. Testi başlattığında bir bölümde hata varsa bölüm kendiliğinden açılır ve sorunu gösterir.
+
+### Başlıklar
+
+İsteğe bağlıdır. Token, çerez ya da API anahtarı isteyen adresleri test etmek için kullan. **Başlıklar**'ı aç ve **+ Başlık ekle**'ye bas. Her satırda bir ad ve bir değer var, örneğin:
+
+| Ad                | Değer                  |
+| ----------------- | ---------------------- |
+| `Authorization`   | `Bearer eyJhbGciOi...` |
+| `Accept-Language` | `tr`                   |
+
+- Başlıklar her istekle gönderilir; POST'ta olduğu gibi GET'te de.
+- **Yapıştırma:** `Authorization: Bearer ...` gibi satırları bir ad kutusuna yapıştırırsan Volta onları her satıra bir başlık olacak şekilde böler. Tarayıcının geliştirici araçlarından ya da bir curl komutundan (`-H "Ad: değer"`) kopyalanan satırlar da çalışır.
+- Volta'nın kendisinin gönderdiği bir başlıkla aynı adı taşıyan başlık onun yerine geçer; örneğin kendi `Content-Type` ya da `Accept-Encoding` değerin.
+- Varsayılan olarak en fazla 20 başlık ve toplam 8 KB (bkz. [Ayarlar](configuration.tr.md)).
+- **Adlar:** İngilizce harf, rakam ve `-`, `_` gibi işaretler; boşluk olmadan. **Değerler:** `ş`, `ğ` gibi harfler olamaz; HTTP başlıkları bunları desteklemez.
+- Bazı başlıkları Volta kendisi yönetir ve değiştirilemez: `Host`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Keep-Alive`, `Upgrade`, `TE`, `Trailer` ve `Expect`. Yapıştırırken bunlar bir notla atlanır.
+
+**Değerleri gizlemek.** Bir satırdaki kilit simgesi, değerini test detayında ve raporda gizler; örneğin `Authorization: Bearer ••••••Oi3x`. Adı `Authorization`, `Proxy-Authorization` ya da `Cookie` olan, ya da adında `token`, `key`, `secret` veya `password` geçen satırlar kendiliğinden kilitlenir. Kilitlemek onay istemez; kilidi açarken Volta önce sorar, çünkü değer o zaman raporda açıkça görünür.
+
+Gizlemek sadece görüntüyü değiştirir. Test yine gerçek değeri gönderir, **YENİDEN ÇALIŞTIR** formu gerçek değerle doldurur ve değer yerel veritabanı dosyasında (`prisma/dev.db`) düz metin olarak saklanır. Bu dosyayı paylaşma; mümkünse gerçek token'lar yerine test token'ları kullan.
+
 ### Test türü
 
 **Sabit Yük:** Test boyunca her saniye aynı sayıda istek.
 
-| Alan | Anlamı |
-|---|---|
+| Alan           | Anlamı                                                  |
+| -------------- | ------------------------------------------------------- |
 | Saniyede İstek | Her saniye kaç istek gönderileceği (varsayılan 10–1000) |
-| Süre (s) | Testin ne kadar süreceği (varsayılan 1–60 saniye) |
+| Süre (s)       | Testin ne kadar süreceği (varsayılan 1–60 saniye)       |
 
 Sunucunun belirli bir yükü kaldırıp kaldırmadığını görmek için kullan; örneğin en yoğun saatte beklediğin trafik.
 
 **Kademeli Artış:** Yük eşit kademelerle artar; böylece sunucunun nerede zorlanmaya başladığını görürsün.
 
-| Alan | Anlamı |
-|---|---|
-| Maks. RPS | Son kademedeki saniyede istek sayısı |
-| Süre (s) | Toplam süre, kademeler arasında eşit paylaştırılır |
-| Kademe Sayısı | Kademe sayısı (varsayılan 2–10) |
+| Alan          | Anlamı                                             |
+| ------------- | -------------------------------------------------- |
+| Maks. RPS     | Son kademedeki saniyede istek sayısı               |
+| Süre (s)      | Toplam süre, kademeler arasında eşit paylaştırılır |
+| Kademe Sayısı | Kademe sayısı (varsayılan 2–10)                    |
 
 Form, sen yazarken planı gösterir. Örneğin:
 
@@ -83,7 +105,7 @@ O anın ayrıntılarını görmek için bir noktanın üzerine gel: gecikme değ
 
 ### Kartlar, durum kodları ve istek günlüğü
 
-- **ORTALAMA, İSTEK, EN DÜŞÜK, EN YÜKSEK:** Bütün testin toplamları. Her birinin altındaki küçük *Anlık* değeri son biten saniyeyi gösterir.
+- **ORTALAMA, İSTEK, EN DÜŞÜK, EN YÜKSEK:** Bütün testin toplamları. Her birinin altındaki küçük _Anlık_ değeri son biten saniyeyi gösterir.
 - **Durum Kodu Dağılımı:** Her durum kodu ve hata türü, sayısı ve oranıyla. Açıklama için bir satırın üzerine gel.
 - **İstek Günlüğü:** Saniye başına bir satır. Örneğin `[5. sn] 200 req avg 52 ms max 61 ms 200×200`.
 
@@ -95,13 +117,13 @@ Testi erken bitirmek için **TESTİ DURDUR**'a bas. O ana kadarki sonuçlar kayd
 
 ### Sayfayı yenilemek ya da bağlantının kopması
 
-- **Test sırasında sayfayı yenilemek** güvenlidir. Sayfa yeniden bağlanır, formu doldurur ve grafiği baştan çizer.
+- **Test sırasında sayfayı yenilemek** güvenlidir. Sayfa yeniden bağlanır, formu (başlıklar dahil) doldurur ve grafiği baştan çizer.
 - **Sayfa açıkken Volta kapanırsa** bağlantının koptuğunu söyleyen bir kutu çıkar ve yeniden bağlanmayı denemeye devam eder. Volta geri gelince sayfayı yenile.
-- **Volta test sırasında kapanırsa** test, Volta bir sonraki açılışında *Yarıda kaldı* olarak işaretlenir ve çalışan kısmı yine analiz edilir.
+- **Volta test sırasında kapanırsa** test, Volta bir sonraki açılışında _Yarıda kaldı_ olarak işaretlenir ve çalışan kısmı yine analiz edilir.
 
 ### Test bittikten sonra
 
-- Form *Test tamamlandı.* gösterir ve grafik yeni bir test başlatana kadar ekranda kalır.
+- Form _Test tamamlandı._ gösterir ve grafik yeni bir test başlatana kadar ekranda kalır.
 - Analizini görmek için testi **TEST HISTORY** sayfasından aç.
 - Kayıtlı hedeflerinde olmayan bir adresi en az iki kez test ettiysen Volta onu kaydetmeyi önerir. **HAYIR** dersen o adres için bir daha sormaz.
 
@@ -122,15 +144,15 @@ Bir testin adresi kayıtlıysa Volta ismini adresin üstünde gösterir: geçmi�
 
 **TEST HISTORY** sayfası bütün testleri en yeniden başlayarak listeler.
 
-| Sütun | Anlamı |
-|---|---|
-| Tarih / Saat | Testin başladığı an |
-| Hedef URL | İsim (kayıtlıysa) ve adres. Kopyalama simgesi adresi kopyalar. |
-| Yöntem | GET ya da POST |
-| Ort. Gecikme | Ortalama cevap süresi, altında p95. 500 ms'den itibaren sarı, 1 saniyeden itibaren kırmızı. |
-| Gerçekleşen RPS | Saniyede sonuçlanan istek sayısı |
-| Süre | Gerçek süre |
-| Durum | Çalışıyor, Tamamlandı, Durduruldu, Başarısız ya da Yarıda kaldı |
+| Sütun           | Anlamı                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| Tarih / Saat    | Testin başladığı an                                                                         |
+| Hedef URL       | İsim (kayıtlıysa) ve adres. Kopyalama simgesi adresi kopyalar.                              |
+| Yöntem          | GET ya da POST                                                                              |
+| Ort. Gecikme    | Ortalama cevap süresi, altında p95. 500 ms'den itibaren sarı, 1 saniyeden itibaren kırmızı. |
+| Gerçekleşen RPS | Saniyede sonuçlanan istek sayısı                                                            |
+| Süre            | Gerçek süre                                                                                 |
+| Durum           | Çalışıyor, Tamamlandı, Durduruldu, Başarısız ya da Yarıda kaldı                             |
 
 - **Arama** testleri adrese ya da kayıtlı isme göre bulur.
 - **Tümü / GET / POST** yönteme göre süzer.
@@ -152,7 +174,7 @@ Geçmiş listesinde bir teste tıklayınca açılır.
 
 **Sol sütun**
 
-- **Test Ayarları:** Adres, yöntem, test türü, RPS, süre, durum, tarih ve varsa JSON gövdesi. **YENİDEN ÇALIŞTIR** bu ayarlarla DASHBOARD'daki formu doldurur; kontrol edip aynı testi başlatabilirsin.
+- **Test Ayarları:** Adres, yöntem, test türü, RPS, süre, durum, tarih; varsa JSON gövdesi ve başlıklar. Gizli başlık değerleri `••••` ve kilit simgesiyle görünür. **YENİDEN ÇALIŞTIR** bu ayarlarla (başlıklar gerçek değerleriyle) DASHBOARD'daki formu doldurur; kontrol edip aynı testi başlatabilirsin.
 - **Analiz:** Sonuç, tahmini kapasite, özet bir cümle, uyarılar, olayların zaman çizelgesi ve bir **ÖNERİLER** butonu. Öneriler hazır bir takip testi içerebilir: **BU TESTİ ÇALIŞTIR** formu onunla doldurur. Bkz. [Sonuçları okumak](reading-results.tr.md).
 
 **Sağ sütun**
@@ -167,9 +189,9 @@ Cevapların çoğu yönlendirmeyse üstte bir uyarı şeridi çıkar: Volta yön
 
 ## Rapor
 
-Test detayındaki **RAPOR AL**, yeni bir sekmede yazdırılabilir bir rapor açar: sonuç, ana ölçümler, grafik, olaylar, kademeler, öneriler, durum kodları, test ayarları ve kısa bir terimler sözlüğü.
+Test detayındaki **RAPOR AL**, yeni bir sekmede yazdırılabilir bir rapor açar: sonuç, ana ölçümler, grafik, olaylar, kademeler, öneriler, durum kodları, test ayarları ve kısa bir terimler sözlüğü. Gizli başlık değerleri raporda da `••••` olarak görünür.
 
-**PDF OLARAK KAYDET**'e bas ve tarayıcının yazdırma penceresinde hedef olarak *PDF olarak kaydet*'i seç.
+**PDF OLARAK KAYDET**'e bas ve tarayıcının yazdırma penceresinde hedef olarak _PDF olarak kaydet_'i seç.
 
 Raporun kendi dil seçimi var; Volta'yı hangi dilde kullanırsan kullan raporu Türkçe ya da İngilizce alabilirsin.
 

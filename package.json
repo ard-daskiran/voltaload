@@ -48,7 +48,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "socket.io": "^4.8.3",
-    "undici": "^8.11.2"
+    "undici": "^8.12.2"
   },
   "allowScripts": {
     "better-sqlite3@12.11.1": true,

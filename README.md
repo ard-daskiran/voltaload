@@ -47,6 +47,7 @@ It runs on your own computer and needs nothing but Node.js.
 - **Saved targets:** keep the addresses you test often.
 - **GET and POST** requests, with an optional JSON body.
 - **Custom headers:** send a token, a cookie or an API key to test endpoints that need a login. Values you hide stay masked on the test details and in the report.
+- **Variables and CSV export:** send different values with every request (`{{email}}`, `{{password}}`…), for example a new user each time, and download every request's values and result as CSV.
 - **English and Turkish** interface.
 
 ## Requirements

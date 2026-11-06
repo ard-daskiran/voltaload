@@ -5,11 +5,13 @@
 Bu rehber Volta'daki her ekranı anlatır. Sayıların ve analizin ne anlama geldiği için bkz. [Sonuçları okumak](reading-results.tr.md).
 
 - [Test kurmak](#test-kurmak)
+- [Değişkenler](#değişkenler)
 - [Test çalışırken](#test-çalışırken)
 - [Kayıtlı hedefler](#kayıtlı-hedefler)
 - [Test geçmişi](#test-geçmişi)
 - [Test detayı](#test-detayı)
 - [Rapor](#rapor)
+- [CSV dışa aktarma](#csv-dışa-aktarma)
 - [Dil](#dil)
 
 ## Test kurmak
@@ -25,7 +27,8 @@ Sadece kendi bilgisayarındaki ya da yerel ağındaki adresler test edilebilir (
 ### Yöntem ve JSON gövdesi
 
 - **GET** ya da **POST**.
-- **JSON Body** isteğe bağlıdır ve sadece POST isteklerinde gönderilir. Geçerli bir JSON olmalı; Volta başlamadan önce kontrol eder. Testteki her istek aynı gövdeyi gönderir.
+- **JSON Body** isteğe bağlıdır ve sadece POST isteklerinde gönderilir. Geçerli bir JSON olmalı; Volta başlamadan önce kontrol eder. [Değişken](#değişkenler) kullanmadıkça testteki her istek aynı gövdeyi gönderir.
+- **JSON Body kutusundaki tuşlar:** `Tab` ve `Shift+Tab` satırı (ya da seçili bütün satırları) içeri ve dışarı kaydırır, `Enter` mevcut girintiyi korur. Kutudan klavyeyle çıkmak için önce `Esc`, sonra `Tab`'a bas.
 
 **JSON Body** ve **Başlıklar**, tıklayınca açılan bölümlerdir. Kapalıyken sağ tarafta kısa bir özet gösterirler (_48 bayt_, _2 başlık · 1 gizli_). GET seçiliyken JSON Body kilitlidir. Testi başlattığında bir bölümde hata varsa bölüm kendiliğinden açılır ve sorunu gösterir.
 
@@ -81,6 +84,41 @@ Her kademe en az 2 saniye sürmeli ve Maks. RPS kademe sayısından az olamaz. K
 **TESTİ BAŞLAT**'a bas. Volta ilk isteği göndermeden önce hedefe ulaşılabildiğini kontrol eder. Projen çalışmıyorsa ya da port yanlışsa test başlamaz ve form nedenini söyler.
 
 Aynı anda sadece bir test çalışabilir.
+
+## Değişkenler
+
+Değişkenler her isteğin farklı değerler göndermesini sağlar. Örneğin bir kayıt adresini her seferinde aynı e-postayla değil, her istekte yeni bir kullanıcıyla test etmek için. Adı çift süslü parantez içinde yaz:
+
+| Değişken       | Örnek (1. istek)                       | Değer                                                                                                     |
+| -------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `{{email}}`    | `volta-a1b2c3-1@volta.test`            | `volta-`, test kimliğinin ilk 6 karakteri ve isteğin numarası. Benzersiz.                                 |
+| `{{username}}` | `volta_a1b2c3_1`                       | E-posta gibi, `_` ile. Benzersiz.                                                                         |
+| `{{name}}`     | `Alex Morgan`                          | Uluslararası bir listeden bir ad ve bir soyad. Benzersiz değil.                                           |
+| `{{password}}` | `Kp7#mQ2xWv9L`                         | 12 karakter. Harfle başlar; büyük ve küçük harf, rakam ve sembol içerir.                                  |
+| `{{n}}`        | `1`                                    | İsteğin sıra numarası: isteklerin gönderildiği sırayla 1, 2, 3…                                           |
+| `{{uuid}}`     | `3f2b8c1e-9a4d-4e7b-8c2a-5d6f7e8a9b0c` | Standart (sürüm 4) biçiminde bir UUID.                                                                    |
+
+**Nerede kullanılır**
+
+- **URL'nin yol ya da sorgu kısmı:** `localhost:3000/api/users/{{n}}`, `localhost:3000/api/check?email={{email}}`. Değerler URL'ye uygun kodlanır (`@`, `%40` olur).
+- **JSON gövdesindeki metin değerleri,** tırnak içinde: `"email": "{{email}}"`.
+- **Başlık değerleri,** örneğin `X-Request-Id: {{uuid}}`.
+
+Değişkenler adresin sunucu kısmında kullanılamaz (`http://{{n}}.localhost`): Volta adresin yerel olduğunu test öncesinde bir kez kontrol eder, bu yüzden adres aynı kalmalı. `{{emial}}` gibi bilinmeyen bir ad testin başlamasını engeller.
+
+**Neden `.test`?** `.test` alan adı test için ayrılmıştır ve hiçbir zaman gerçek bir siteye ait olamaz. Test ettiğin uygulama her yeni hesaba doğrulama e-postası gönderse bile e-postalar kimseye ulaşmaz.
+
+Her isteğin hangi değerleri gönderdiğini görmek için [CSV](#csv-dışa-aktarma)'yi indir.
+
+### Rastgele kullanıcı
+
+JSON Body bölümünün üstündeki **Rastgele kullanıcı** butonu senin için bir gövde oluşturur. GET seçiliyken ve test çalışırken kilitlidir.
+
+- Her satır bir alan adı ve bir türdür: E-posta, Kullanıcı adı, Ad Soyad, Şifre, Sıra no, UUID ya da **Sabit değer** (değeri sen yazarsın; her istekte aynıdır).
+- E-posta, kullanıcı adı ve şifreyle açılır. **Alan ekle** bir satır ekler (en fazla 20), çöp kutusu simgesi bir satırı siler.
+- Satırların sırasını değiştirmek için bir satırı tutamağından sürükle. Tutamak seçiliyken `Alt+↑` / `Alt+↓` da onu taşır.
+- **Önizleme** gövdeyi örnek değerlerle gösterir; gerçek değerler her istekte farklıdır.
+- **GÖVDEYE YAZ** gövdeyi değişkenleriyle (`"email": "{{email}}"`) JSON Body kutusuna yazar. Kutu boş değilse, değiştirmeden önce sorar.
 
 ## Test çalışırken
 
@@ -194,6 +232,28 @@ Test detayındaki **RAPOR AL**, yeni bir sekmede yazdırılabilir bir rapor aça
 **PDF OLARAK KAYDET**'e bas ve tarayıcının yazdırma penceresinde hedef olarak _PDF olarak kaydet_'i seç.
 
 Raporun kendi dil seçimi var; Volta'yı hangi dilde kullanırsan kullan raporu Türkçe ya da İngilizce alabilirsin.
+
+## CSV dışa aktarma
+
+Bir testin sonuçlarını, her istek bir satır olacak şekilde CSV dosyası olarak indirir.
+
+- **Test detayı:** Test bittikten sonra **CSV** butonu.
+- **DASHBOARD:** Değişken kullanan bir test bitince **Test Kur**'un yanında bir **CSV** butonu çıkar. Bütün sonuçlar kaydedilene kadar soluk kalır.
+
+| Sütun                       | Anlamı                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| `n`                         | İsteğin sıra numarası (sadece değişken kullanan testlerde)                                |
+| `email`, `password`, …      | İsteğin gönderdiği değerler, kullanılan her değişken için bir sütun (sadece değişken kullanan testlerde) |
+| `status`                    | Durum kodu. Cevap gelmediyse boştur; sebebi `error` sütunundadır.                         |
+| `error`                     | `TIMEOUT`, `CONNECTION_REFUSED`, `CONNECTION_RESET` ya da `NETWORK_ERROR`                 |
+| `response_ms`               | Milisaniye olarak cevap süresi                                                            |
+| `sent_at`                   | İsteğin gönderildiği an (ISO 8601, UTC)                                                   |
+
+- Ayırıcı arayüz diline göre seçilir: Türkçede `;`, İngilizcede `,`. Dosya UTF-8 BOM ile başlar; böylece Excel onu doğru okur.
+- **Değerler saklanmaz.** CSV'yi indirdiğinde Volta onları testin anahtarından yeniden hesaplar. Aynı test her seferinde aynı değerleri verir.
+- **Durdurulan testler:** Testi durdurduğunda hâlâ cevap bekleyen istekler hiç kaydedilmez. Satırları yoktur, bu yüzden numaraları `n` sütununda eksiktir. Sunucu onları yine de işlemiş olabilir (örneğin hesabı oluşturmuş olabilir).
+
+> **⚠️** Şifreler CSV'de açıkça yazılır. Dosyayı paylaşırken dikkatli ol.
 
 ## Dil
 

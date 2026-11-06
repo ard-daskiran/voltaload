@@ -5,6 +5,7 @@ import { t, formatNumber, getLocale } from "../core/i18n.js";
 import { runStatusStyle, runStatusLabel } from "../status/run-status.js";
 import { rerunWith } from "../core/rerun.js";
 import { prettyJson } from "../core/json.js";
+import { renderJson } from "../core/json-highlight.js";
 import { displayHeaderValue } from "../core/headers.js";
 
 // One line per header: name, value (hidden ones as "••••" with a lock icon)
@@ -68,7 +69,7 @@ export function createTestSettings() {
 
         const hasBody = Boolean(testRun.body);
         $("d-body-block").hidden = !hasBody;
-        if (hasBody) $("d-body").textContent = prettyJson(testRun.body);
+        if (hasBody) renderJson($("d-body"), prettyJson(testRun.body));
 
         // Older tests have no headers (empty list)
         const headers = testRun.headers ?? [];

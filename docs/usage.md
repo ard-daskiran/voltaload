@@ -5,11 +5,13 @@
 This guide walks through every screen in Volta. To understand what the numbers and the analysis mean, see [Reading the results](reading-results.md).
 
 - [Setting up a test](#setting-up-a-test)
+- [Variables](#variables)
 - [While the test runs](#while-the-test-runs)
 - [Saved targets](#saved-targets)
 - [Test history](#test-history)
 - [Test details](#test-details)
 - [Report](#report)
+- [CSV export](#csv-export)
 - [Language](#language)
 
 ## Setting up a test
@@ -25,7 +27,8 @@ Only addresses on your own computer or local network can be tested (see [Safety]
 ### Method and JSON body
 
 - **GET** or **POST**.
-- **JSON Body** is optional and sent only with POST requests. It must be valid JSON; Volta checks it before starting. Every request in the test sends the same body.
+- **JSON Body** is optional and sent only with POST requests. It must be valid JSON; Volta checks it before starting. Every request in the test sends the same body, unless you use [variables](#variables).
+- **Keys in the JSON Body box:** `Tab` and `Shift+Tab` indent and outdent the line (or every selected line), `Enter` keeps the current indentation. To leave the box with the keyboard, press `Esc`, then `Tab`.
 
 **JSON Body** and **Headers** are sections that open with a click. Closed, each shows a short summary on the right (_48 bytes_, _2 headers · 1 hidden_). With GET, JSON Body is locked. If something in a section is invalid when you start, it opens by itself and shows the problem.
 
@@ -81,6 +84,41 @@ Each step must last at least 2 seconds, and Max RPS can't be lower than the numb
 Press **START TEST**. Before sending the first request, Volta checks that the target is reachable. If your project isn't running or the port is wrong, the test doesn't start and the form tells you why.
 
 Only one test can run at a time.
+
+## Variables
+
+Variables make every request send different values, for example to test a sign-up endpoint with a new user on every request instead of the same email again and again. Write the name in double braces:
+
+| Variable       | Example (request 1)                    | Value                                                                                                        |
+| -------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `{{email}}`    | `volta-a1b2c3-1@volta.test`            | `volta-`, the first 6 characters of the test's ID, and the request's number. Unique.                         |
+| `{{username}}` | `volta_a1b2c3_1`                       | Like the email, with `_`. Unique.                                                                            |
+| `{{name}}`     | `Alex Morgan`                          | A first and a last name from an international list. Not unique.                                              |
+| `{{password}}` | `Kp7#mQ2xWv9L`                         | 12 characters. Starts with a letter and contains uppercase and lowercase letters, a digit and a symbol.      |
+| `{{n}}`        | `1`                                    | The request's sequence number: 1, 2, 3… in the order the requests are sent.                                  |
+| `{{uuid}}`     | `3f2b8c1e-9a4d-4e7b-8c2a-5d6f7e8a9b0c` | A UUID in the standard (version 4) format.                                                                   |
+
+**Where you can use them**
+
+- **The URL's path or query:** `localhost:3000/api/users/{{n}}`, `localhost:3000/api/check?email={{email}}`. Values are URL-encoded (`@` becomes `%40`).
+- **String values in the JSON body,** inside quotes: `"email": "{{email}}"`.
+- **Header values,** for example `X-Request-Id: {{uuid}}`.
+
+Variables can't be used in the server part of the address (`http://{{n}}.localhost`): Volta checks that the address is local once, before the test, so it must stay the same. An unknown name such as `{{emial}}` keeps the test from starting.
+
+**Why `.test`?** The `.test` domain is reserved for testing and can never belong to a real site. Even if the app you test sends a confirmation email to every new account, the emails reach no one.
+
+To see which values each request sent, download the [CSV](#csv-export).
+
+### Random user
+
+The **Random user** button above the JSON Body section builds a body for you. It's locked while GET is selected and while a test is running.
+
+- Each row is a field name and a type: Email, Username, Full name, Password, Sequence no, UUID or **Fixed value** (you type the value; it's the same in every request).
+- It opens with email, username and password. **Add field** adds a row (up to 20), the trash icon removes one.
+- To change the order of the rows, drag a row by its handle. With the handle focused, `Alt+↑` / `Alt+↓` move it too.
+- **Preview** shows the body with sample values; the real values differ on every request.
+- **WRITE TO BODY** puts the body, with its variables (`"email": "{{email}}"`), into the JSON Body box. If the box isn't empty, it asks before replacing it.
 
 ## While the test runs
 
@@ -194,6 +232,28 @@ A banner appears at the top if most responses were redirects: Volta doesn't foll
 Press **SAVE AS PDF** and choose _Save as PDF_ as the destination in your browser's print dialog.
 
 The report has its own language switch, so you can produce it in English or Turkish regardless of the language you use in Volta.
+
+## CSV export
+
+Downloads a test's results as a CSV file, one row per request.
+
+- **Test details:** the **CSV** button, once the test has ended.
+- **Dashboard:** when a test with variables ends, a **CSV** button appears next to **Test Setup**. It stays faded until all results are saved.
+
+| Column                      | Meaning                                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| `n`                         | The request's sequence number (tests with variables only)                                |
+| `email`, `password`, …      | The values the request sent, one column per variable used (tests with variables only)    |
+| `status`                    | The status code. Empty if no response arrived; the reason is in `error`.                 |
+| `error`                     | `TIMEOUT`, `CONNECTION_REFUSED`, `CONNECTION_RESET` or `NETWORK_ERROR`                   |
+| `response_ms`               | Response time in milliseconds                                                            |
+| `sent_at`                   | When the request was sent (ISO 8601, UTC)                                                |
+
+- The separator follows the interface language: `;` in Turkish, `,` in English. The file starts with a UTF-8 BOM, so Excel reads it correctly.
+- **Values aren't stored.** When you download the CSV, Volta computes them again from the test's key. The same test gives the same values every time.
+- **Stopped tests:** requests still waiting for a response when you stop the test are never recorded. They have no row, so their numbers are missing from `n`. The server may still have processed them (for example, created the account).
+
+> **⚠️** Passwords appear in the CSV in plain text. Be careful when you share the file.
 
 ## Language
 

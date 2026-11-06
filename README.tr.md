@@ -47,6 +47,7 @@ Kendi bilgisayarında çalışır ve Node.js dışında hiçbir şeye ihtiyaç d
 - **Kayıtlı hedefler:** Sık test ettiğin adresleri sakla.
 - **GET ve POST** istekleri, isteğe bağlı JSON gövdesiyle.
 - **Özel başlıklar:** Giriş gerektiren adresleri test etmek için token, çerez ya da API anahtarı gönder. Gizlediğin değerler test detayında ve raporda maskeli görünür.
+- **Değişkenler ve CSV dışa aktarma:** Her istekte farklı değerler gönder (`{{email}}`, `{{password}}`…), örneğin her seferinde yeni bir kullanıcı; her isteğin değerlerini ve sonucunu CSV olarak indir.
 - **İngilizce ve Türkçe** arayüz.
 
 ## Gereksinimler

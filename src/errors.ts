@@ -77,8 +77,7 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   HEADER_FORBIDDEN: (p) => `The "${p.name}" header is managed by Volta and can't be set.`,
   HEADER_DUPLICATE: (p) => `The "${p.name}" header is used more than once.`,
   HEADERS_TOO_LARGE: (p) => `The headers are too large (max ${p.max} bytes in total).`,
-  UNKNOWN_VARIABLE: (p) =>
-    `Unknown variable: {{${p.name}}}. Available: {{email}}, {{username}}, {{password}}, {{n}}, {{uuid}}.`,
+  UNKNOWN_VARIABLE: (p) => `Unknown variable: {{${p.variable}}}`,
   VARIABLE_IN_HOST: () =>
     "Variables can't be used in the server part of the address, only after it, e.g. http://localhost:3000/api/users/{{n}}",
   URL_MALFORMED: () => "Invalid URL format.",

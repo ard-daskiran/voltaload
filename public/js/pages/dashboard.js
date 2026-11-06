@@ -15,6 +15,12 @@ import { createVoltaStatus } from "../dashboard/volta-status.js";
 import { createTargetBook } from "../dashboard/target-book.js";
 import { createSaveSuggestion } from "../dashboard/save-suggestion.js";
 import { createConnectionOverlay } from "../core/connection-overlay.js";
+import { createResultsCsvLink } from "../dashboard/results-csv-link.js";
+import { usesVariables } from "../core/variables.js";
+
+// The page always opens at the top. The browser would otherwise restore the old scroll position on F5, and
+// since Tailwind (CDN) builds the styles after the first paint, that shows as the page scrolling down by itself.
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 
 renderHeader();
 applyTranslations();
@@ -31,6 +37,7 @@ const metrics = createLiveMetrics();
 const voltaStatus = createVoltaStatus();
 const requestLog = createRequestLog($("terminal-log"));
 const connectionOverlay = createConnectionOverlay();
+const csvLink = createResultsCsvLink($("form-csv-btn"));
 
 const statusCard = createStatusCard({
     rowsEl: $("status-rows"),
@@ -57,6 +64,20 @@ const seconds = createSecondAggregator({
 // URL of the running (or most recently run) test: for the save suggestion when the test ends
 let currentTestUrl = null;
 
+// The running (or most recently run) test, for the CSV link: { id, durationSeconds, hasVariables }
+let currentTest = null;
+
+// Same texts as the server checks: the body as it's sent (JSON text), the header values
+function testUsesVariables({ url, body, headers }) {
+    const bodyText = body === undefined ? "" : typeof body === "string" ? body : JSON.stringify(body);
+    return usesVariables([url, bodyText, ...(headers ?? []).map((header) => header.value)]);
+}
+
+// The test has ended but its results may still be being written: the CSV link shows, faded
+function markTestEnding() {
+    if (currentTest?.hasVariables) csvLink.pending();
+}
+
 // --- Flow ---
 
 // Reset the screen for a new test
@@ -78,6 +99,9 @@ function handleWindow(d) {
     statusCard.update(metrics.getStatusCounts(), metrics.getRequests());
     voltaStatus.update(d);
     seconds.add(x, d);
+
+    // The last window of the test's duration has arrived
+    if (currentTest && d.elapsedSeconds >= currentTest.durationSeconds) markTestEnding();
 }
 
 function finishTest(message, isError = false) {
@@ -94,8 +118,13 @@ const session = createTestSession({
         finishTest(status === "STOPPED" ? t("state.stopped") : t("state.completed"));
         // After a completed or stopped test: suggest saving the URL if it's not in the target book
         saveSuggestion.maybeSuggest(currentTestUrl);
+        // The server sends "done" after the last result is written: the CSV is complete
+        if (currentTest?.hasVariables) csvLink.ready(currentTest.id);
     },
-    onError: (message) => finishTest(t("state.error", { message }), true),
+    onError: (message) => {
+        csvLink.hide();
+        finishTest(t("state.error", { message }), true);
+    },
     onConnectionLost: connectionOverlay.lost,
     onConnectionRestored: connectionOverlay.restored,
 });
@@ -120,6 +149,12 @@ form.onSubmit(async () => {
     }
 
     currentTestUrl = input.payload.url;
+    currentTest = {
+        id: result.testRunId,
+        durationSeconds: input.payload.duration,
+        hasVariables: testUsesVariables(input.payload),
+    };
+    csvLink.hide();
     prepareView(input.payload.duration, input.payload.loadProfile);
     session.follow(result.testRunId);
     form.setLocked(true);
@@ -132,6 +167,8 @@ form.onStop(async () => {
     const result = await session.stop();
     form.setStopBusy(false);
     if (!result.ok) form.setStatus(t("state.serverUnreachable"), true);
+    // Stopped, but the server may still be writing the results ("done" comes after that)
+    else markTestEnding();
 });
 
 $("zoom-reset").addEventListener("click", resetChartZoom);
@@ -147,6 +184,11 @@ async function init() {
     const resumed = await session.resume((active) => {
         const config = active.config;
         currentTestUrl = config.url;
+        currentTest = {
+            id: active.testRunId,
+            durationSeconds: config.durationSeconds,
+            hasVariables: testUsesVariables(config),
+        };
         form.fillFromConfig(config);
         prepareView(config.durationSeconds, config.profile?.type ?? "CONSTANT");
         form.setLocked(true);
@@ -156,6 +198,8 @@ async function init() {
         form.setStatus(t("state.reconnected"));
     } else if (resumed === "finished") {
         finishTest(t("state.completed"));
+        // It's no longer the active test, so its results are written
+        if (currentTest?.hasVariables) csvLink.ready(currentTest.id);
     } else {
         // "Run again" settings first, otherwise the draft left over from a language change
         form.applyRerunSettings() || form.restoreDraft();

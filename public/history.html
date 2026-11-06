@@ -35,6 +35,30 @@
         box-shadow: 0 0 8px rgba(244, 194, 26, 0.4);
         border-color: #f4c21a;
       }
+      /* Thin scrollbars that match the theme, for every scrolling area on the page */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #4b5058 #0b0e14;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track,
+      ::-webkit-scrollbar-corner {
+        background: #0b0e14;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4b5058;
+        border-radius: 4px;
+        border: 2px solid #0b0e14;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+      }
+      ::-webkit-scrollbar-button {
+        display: none;
+      }
     </style>
   </head>
   <body

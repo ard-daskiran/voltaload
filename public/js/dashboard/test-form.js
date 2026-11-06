@@ -11,9 +11,15 @@ import { createCollapsible } from "../core/collapsible.js";
 import { checkHeaders } from "../core/headers.js";
 import { checkVariables } from "../core/variables.js";
 import { createHeaderEditor } from "./header-editor.js";
+import { createBodyBuilder } from "./body-builder.js";
+import { createJsonOverlay } from "../core/json-highlight.js";
+import { attachEditorKeys } from "../core/textarea-keys.js";
 
 // The page reloads when the language changes: values typed into the form but not yet started are kept under this key
 const DRAFT_STORAGE_KEY = "volta-form-draft";
+
+// The JSON Body box grows up to this many lines, then scrolls
+const BODY_MAX_LINES = 16;
 
 // Limits from the server. Until they arrive (or if they can't), the form doesn't validate on its own:
 // the server checks every request anyway, and the error message comes from there.
@@ -78,8 +84,8 @@ export function createTestForm() {
     const statusText = $("status-text");
     const liveBadge = $("live-badge");
     const profileButtons = document.querySelectorAll("[data-profile]");
-    const variableButtons = document.querySelectorAll("[data-variable]");
     const bookBtn = $("target-book-btn");
+    const builderBtn = $("body-builder-btn");
     let profile = "CONSTANT";
     let locked = false;
 
@@ -111,11 +117,52 @@ export function createTestForm() {
         onNotice: (text) => setStatus(text),
     });
 
+    const bodyBuilder = createBodyBuilder({
+        getBody: () => bodyInput.value,
+        onWrite: (text) => {
+            bodyInput.value = text;
+            bodySection.open();
+            refreshBody();
+            updateSummaries();
+        },
+    });
+
+    // The JSON Body's colors (the layer behind the textarea)
+    const bodyOverlay = createJsonOverlay({ textarea: bodyInput, layer: $("body-highlight") });
+    // Tab / Shift+Tab / Enter keep the indentation (every edit fires "input": colors, height and summary follow)
+    attachEditorKeys(bodyInput);
+
+    // The JSON Body grows with its content: at least its height in the page (min-h-28), at most about 16 lines, then it scrolls
+    function fitBodyHeight() {
+        // Reset first (min-h-28 holds it) so scrollHeight measures the content, not the current height.
+        // "auto", not "0px": if the height were ever animated, a px value would start an animation and the old height would be measured.
+        bodyInput.style.height = "auto";
+        // Borders and the horizontal scrollbar (long lines don't wrap) come on top of the content
+        const frame = bodyInput.offsetHeight - bodyInput.clientHeight;
+        const style = getComputedStyle(bodyInput);
+        const maxHeight = parseFloat(style.lineHeight) * BODY_MAX_LINES + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + frame;
+        bodyInput.style.height = `${Math.min(bodyInput.scrollHeight + frame, maxHeight)}px`;
+        // The scroll position can change with the height; the colored layer follows it
+        bodyOverlay.syncScroll();
+    }
+
+    // After the body is set from code (rerun, draft, reconnect, "Write to body"): colors and height
+    function refreshBody() {
+        bodyOverlay.refresh();
+        fitBodyHeight();
+    }
+
+    // "Random user" is locked while a test runs and with GET (no body is sent)
+    function updateBuilderButton() {
+        builderBtn.disabled = locked || methodSelect.value === "GET";
+    }
+
     // GET sends no body: the JSON Body section is closed and locked (what's typed in it is kept for POST)
     function updateMethod() {
         const isGet = methodSelect.value === "GET";
         if (isGet) bodySection.close();
         bodyToggle.disabled = isGet;
+        updateBuilderButton();
         updateSummaries();
     }
 
@@ -210,11 +257,12 @@ export function createTestForm() {
     // While a test runs the form is locked, and the "Stop" button and live indicator are visible
     function setLocked(isLocked) {
         locked = isLocked;
-        for (const el of [urlInput, bookBtn, methodSelect, rpsInput, durationInput, stepCountInput, bodyInput, ...profileButtons, ...variableButtons]) {
+        for (const el of [urlInput, bookBtn, methodSelect, rpsInput, durationInput, stepCountInput, bodyInput, ...profileButtons]) {
             el.disabled = isLocked;
         }
         // The sections can still be opened during the test to see what's being sent, but not edited
         headerEditor.setDisabled(isLocked);
+        updateBuilderButton();
         startBtn.hidden = isLocked;
         stopBtn.hidden = !isLocked;
         liveBadge.hidden = !isLocked;
@@ -297,6 +345,7 @@ export function createTestForm() {
         durationInput.value = config.durationSeconds;
         // Indented so the body is readable
         bodyInput.value = prettyJson(config.body ?? "");
+        refreshBody();
         headerEditor.setHeaders(config.headers ?? []);
         if (type === "STEPPED") stepCountInput.value = config.profile.stepCount;
         setProfile(type);
@@ -312,6 +361,7 @@ export function createTestForm() {
         durationInput.value = settings.duration ?? "";
         if (settings.stepCount) stepCountInput.value = settings.stepCount;
         bodyInput.value = settings.body ?? "";
+        refreshBody();
         // Older saved settings have no headers
         headerEditor.setHeaders(settings.headers ?? []);
         setProfile(settings.loadProfile === "STEPPED" ? "STEPPED" : "CONSTANT");
@@ -381,17 +431,11 @@ export function createTestForm() {
         input.addEventListener("input", updatePreview);
     }
     methodSelect.addEventListener("change", updateMethod);
-    bodyInput.addEventListener("input", updateSummaries);
-
-    // A variable button adds {{name}} where the cursor is in the JSON Body (replacing any selected text)
-    variableButtons.forEach((btn) =>
-        btn.addEventListener("click", () => {
-            const text = `{{${btn.dataset.variable}}}`;
-            bodyInput.setRangeText(text, bodyInput.selectionStart, bodyInput.selectionEnd, "end");
-            bodyInput.focus();
-            updateSummaries();
-        })
-    );
+    bodyInput.addEventListener("input", () => {
+        fitBodyHeight();
+        updateSummaries();
+    });
+    builderBtn.addEventListener("click", () => bodyBuilder.open());
 
     setProfile("CONSTANT");
     updateMethod();

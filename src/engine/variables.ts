@@ -1,12 +1,12 @@
 // variables.ts
-// Variables in a test's URL, JSON body and header values: {{email}}, {{username}}, {{password}}, {{n}}, {{uuid}}.
+// Variables in a test's URL, JSON body and header values: {{email}}, {{username}}, {{name}}, {{password}}, {{n}}, {{uuid}}.
 // Every request gets its own values. The values aren't saved: only each request's sequence number (n) is, and the
 // values are computed again from it and the test's seed when the CSV is exported. Same seed + same n → same values.
 // The worker (while sending) and the CSV export both use this file, so they always produce the same values.
 
 import { createHmac } from "node:crypto";
 
-export const VARIABLE_NAMES = ["email", "username", "password", "n", "uuid"] as const;
+export const VARIABLE_NAMES = ["email", "username", "name", "password", "n", "uuid"] as const;
 export type VariableName = (typeof VARIABLE_NAMES)[number];
 export type VariableValues = Record<VariableName, string>;
 
@@ -23,6 +23,21 @@ const DIGITS = "0123456789";
 // No quote or backslash: the value goes inside a JSON string, and either would break the body
 const SYMBOLS = "!#$%*+-=?@^_";
 const PASSWORD_LENGTH = 12;
+
+// {{name}}: "Alex Morgan". ASCII only, no quotes: the value goes inside a JSON string and into CSV cells.
+// 32 of each, so a byte (0-255) picks every name equally often.
+const FIRST_NAMES = [
+  "Alex", "Sam", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie",
+  "Chris", "Robin", "Daniel", "Sofia", "Maya", "Leo", "Nora", "Omar",
+  "Elena", "Lucas", "Hana", "Mateo", "Aisha", "Ivan", "Lena", "Kenji",
+  "Amara", "Diego", "Mia", "Noah", "Zara", "Emil", "Ines", "Yusuf",
+];
+const LAST_NAMES = [
+  "Morgan", "Smith", "Garcia", "Kim", "Silva", "Novak", "Rossi", "Muller",
+  "Tanaka", "Khan", "Lopez", "Martin", "Nguyen", "Petrov", "Jensen", "Costa",
+  "Dubois", "Ali", "Moreno", "Fischer", "Sato", "Hansen", "Rivera", "Kowalski",
+  "Okafor", "Larsen", "Weber", "Chen", "Ortiz", "Haddad", "Berg", "Mendes",
+];
 
 export interface VariableContext {
   testRunId: string;
@@ -94,6 +109,12 @@ function password(seed: string, n: number): string {
   return chars.join("");
 }
 
+// "Alex Morgan": a first and a last name from the lists above. Doesn't have to be unique.
+function fullName(seed: string, n: number): string {
+  const bytes = derive(seed, "name", n);
+  return `${FIRST_NAMES[bytes[0] % FIRST_NAMES.length]} ${LAST_NAMES[bytes[1] % LAST_NAMES.length]}`;
+}
+
 // A UUID in the standard (version 4) format, from the same kind of bytes
 function uuid(seed: string, n: number): string {
   const bytes = Buffer.from(derive(seed, "uuid", n).subarray(0, 16));
@@ -109,9 +130,10 @@ export function createValueGenerator(context: VariableContext, needed: Iterable<
   const prefix = testPrefix(context.testRunId);
 
   return (n: number): VariableValues => {
-    const values = { email: "", username: "", password: "", n: String(n), uuid: "" };
+    const values = { email: "", username: "", name: "", password: "", n: String(n), uuid: "" };
     if (names.has("email")) values.email = `volta-${prefix}-${n}@${EMAIL_DOMAIN}`;
     if (names.has("username")) values.username = `volta_${prefix}_${n}`;
+    if (names.has("name")) values.name = fullName(context.seed, n);
     if (names.has("password")) values.password = password(context.seed, n);
     if (names.has("uuid")) values.uuid = uuid(context.seed, n);
     return values;

@@ -43,6 +43,30 @@
       input[type="number"] {
         -moz-appearance: textfield;
       }
+      /* Thin scrollbars that match the theme, for every scrolling area on the page */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #4b5058 #0b0e14;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track,
+      ::-webkit-scrollbar-corner {
+        background: #0b0e14;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4b5058;
+        border-radius: 4px;
+        border: 2px solid #0b0e14;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+      }
+      ::-webkit-scrollbar-button {
+        display: none;
+      }
     </style>
   </head>
   <body class="min-h-screen font-body-md text-body-md overflow-x-hidden">
@@ -60,12 +84,27 @@
           class="border border-border-subtle bg-surface-container-lowest p-5 flex flex-col gap-4 relative"
         >
           <div class="absolute top-0 left-0 w-full h-1 bg-border-subtle"></div>
-          <h2
-            class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1"
-            data-i18n="form.title"
-          >
-            Test Kur
-          </h2>
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <h2
+              class="font-label-caps text-label-caps text-on-surface-variant uppercase"
+              data-i18n="form.title"
+            >
+              Test Kur
+            </h2>
+            <!-- CSV of the last test with variables, once it ended (dashboard/results-csv-link.js).
+                 Same look as the detail page's CSV button; the negative margin keeps the title row's height. -->
+            <a
+              id="form-csv-btn"
+              hidden
+              download
+              class="-my-2 h-8 flex items-center gap-1.5 border border-secondary/60 text-secondary font-label-caps text-[11px] px-3 rounded hover:bg-secondary/10 transition-colors"
+            >
+              <span class="material-symbols-outlined text-[16px]"
+                >download</span
+              >
+              <span data-i18n="detail.csv">CSV</span>
+            </a>
+          </div>
 
           <!-- Target URL (with the saved targets button on its right) -->
           <div class="flex flex-col gap-2 group">
@@ -200,13 +239,31 @@
             ></p>
           </div>
 
+          <!-- Random user: builds a JSON Body from fields and variables (dashboard/body-builder.js).
+               Outside the sections, so it's visible while they're closed.
+               Starts disabled (the method starts as GET); test-form.js enables it, so it doesn't flash on load. -->
+          <div class="flex justify-end -mb-2">
+            <button
+              type="button"
+              id="body-builder-btn"
+              disabled
+              class="flex items-center gap-1 px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            >
+              <span class="material-symbols-outlined text-[14px]"
+                >person_add</span
+              >
+              <span data-i18n="builder.button">Rastgele kullanıcı</span>
+            </button>
+          </div>
+
           <!-- JSON Body and Headers: sections that open on click (core/collapsible.js).
                Closed, each shows a one-line summary on the right ("48 bytes", "2 headers · 1 hidden"). -->
           <div class="border border-border-subtle flex flex-col">
-            <!-- JSON Body (POST only; with GET the section is locked) -->
+            <!-- JSON Body (POST only; with GET the section is locked). Starts disabled for the same reason. -->
             <button
               type="button"
               id="body-toggle"
+              disabled
               aria-controls="body-panel"
               class="w-full flex items-center justify-between gap-2 px-3 py-2.5 font-data-md text-data-md text-on-surface-variant hover:text-primary-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-on-surface-variant"
             >
@@ -230,58 +287,26 @@
             >
               <div class="overflow-hidden">
                 <div class="px-3 pb-3 pt-0.5">
-                  <textarea
-                    id="body"
-                    placeholder='{"email":"test@test.com"}'
-                    class="w-full h-28 resize-none bg-surface-container-lowest border border-border-subtle p-3 font-data-md text-data-md text-secondary focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all overflow-y-auto leading-relaxed"
-                  ></textarea>
-                  <!-- Variables: a click adds one where the cursor is (dashboard/test-form.js) -->
-                  <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span
-                      class="font-data-md text-[11px] text-outline"
-                      data-i18n="form.variables"
-                      >Değişkenler:</span
-                    >
-                    <button
-                      type="button"
-                      data-variable="email"
-                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                    >
-                      {{email}}
-                    </button>
-                    <button
-                      type="button"
-                      data-variable="username"
-                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                    >
-                      {{username}}
-                    </button>
-                    <button
-                      type="button"
-                      data-variable="password"
-                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                    >
-                      {{password}}
-                    </button>
-                    <button
-                      type="button"
-                      data-variable="n"
-                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                    >
-                      {{n}}
-                    </button>
-                    <button
-                      type="button"
-                      data-variable="uuid"
-                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                    >
-                      {{uuid}}
-                    </button>
+                  <!-- Grows with its content up to about 16 lines (dashboard/test-form.js), then scrolls.
+                       Colored: the textarea's text is transparent and the layer behind it shows the same text
+                       colored (core/json-highlight.js). Both need the same font, size, line height, padding and border. -->
+                  <div class="relative bg-surface-container-lowest">
+                    <pre
+                      id="body-highlight"
+                      aria-hidden="true"
+                      class="absolute inset-0 m-0 pointer-events-none overflow-auto whitespace-pre border border-transparent p-3 font-data-md text-data-md leading-relaxed text-secondary"
+                    ></pre>
+                    <textarea
+                      id="body"
+                      wrap="off"
+                      spellcheck="false"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      autocorrect="off"
+                      placeholder='{"email":"test@test.com"}'
+                      class="relative block w-full h-28 min-h-28 resize-none bg-transparent border border-border-subtle p-3 font-data-md text-data-md text-transparent caret-on-surface selection:bg-secondary/30 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-[border-color,box-shadow] overflow-auto leading-relaxed"
+                    ></textarea>
                   </div>
-                  <p
-                    class="mt-1.5 text-[11px] leading-snug text-outline"
-                    data-i18n="form.variables.hint"
-                  ></p>
                 </div>
               </div>
             </div>

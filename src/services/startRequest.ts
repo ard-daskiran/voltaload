@@ -164,16 +164,16 @@ export function validateStartRequest(input: any): { ok: true; value: StartReques
   const headers = validateHeaders(rawHeaders);
   if (!headers.ok) return headers;
 
-      // Variables: only known names, and not in the server part of the address
-    const sendsBody = method !== "GET" && body !== undefined;
-    const texts = [url, ...(sendsBody ? [JSON.stringify(body)] : []), ...headers.value.map((header) => header.value)];
-    const unknown = unknownVariable(texts);
-    if (unknown !== null) {
-      return { ok: false, error: apiError("UNKNOWN_VARIABLE", { name: unknown.slice(0, 50) }) };
-    }
-    if (variableInHost(url)) {
-      return { ok: false, error: apiError("VARIABLE_IN_HOST") };
-    }
+  // Variables: only known names, and not in the server part of the address
+  const sendsBody = method !== "GET" && body !== undefined;
+  const texts = [url, ...(sendsBody ? [JSON.stringify(body)] : []), ...headers.value.map((header) => header.value)];
+  const unknown = unknownVariable(texts);
+  if (unknown !== null) {
+    return { ok: false, error: apiError("UNKNOWN_VARIABLE", { variable: unknown.slice(0, 50) }) };
+  }
+  if (variableInHost(url)) {
+    return { ok: false, error: apiError("VARIABLE_IN_HOST") };
+  }
 
   return {
     ok: true,

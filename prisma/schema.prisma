@@ -48,6 +48,10 @@ model TestRun {
   // Empty for tests made before this field was added; those count from the first response.
   startedAt DateTime?
 
+  // Only for tests that use variables ({{email}}...): the secret their values are computed from.
+  // Same seed + same sequence number → same values, so the values don't have to be saved (src/engine/variables.ts).
+  variableSeed String?
+
   results TestResult[]
 }
 
@@ -65,7 +69,9 @@ model TestResult {
   responseTime Int
 
   // Size downloaded over the network (bytes)
-  responseSize Int @default(0)
+  responseSize Int  @default(0)
+  // The request's sequence number (1, 2, 3...), only for tests that use variables: its values are computed from it
+  seq          Int?
 
   testRun TestRun @relation(fields: [testRunId], references: [id], onDelete: Cascade)
 

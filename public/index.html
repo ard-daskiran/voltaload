@@ -235,6 +235,53 @@
                     placeholder='{"email":"test@test.com"}'
                     class="w-full h-28 resize-none bg-surface-container-lowest border border-border-subtle p-3 font-data-md text-data-md text-secondary focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all overflow-y-auto leading-relaxed"
                   ></textarea>
+                  <!-- Variables: a click adds one where the cursor is (dashboard/test-form.js) -->
+                  <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                    <span
+                      class="font-data-md text-[11px] text-outline"
+                      data-i18n="form.variables"
+                      >Değişkenler:</span
+                    >
+                    <button
+                      type="button"
+                      data-variable="email"
+                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      {{email}}
+                    </button>
+                    <button
+                      type="button"
+                      data-variable="username"
+                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      {{username}}
+                    </button>
+                    <button
+                      type="button"
+                      data-variable="password"
+                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      {{password}}
+                    </button>
+                    <button
+                      type="button"
+                      data-variable="n"
+                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      {{n}}
+                    </button>
+                    <button
+                      type="button"
+                      data-variable="uuid"
+                      class="px-1.5 py-0.5 border border-border-subtle rounded font-data-md text-[11px] text-secondary hover:border-secondary hover:bg-secondary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      {{uuid}}
+                    </button>
+                  </div>
+                  <p
+                    class="mt-1.5 text-[11px] leading-snug text-outline"
+                    data-i18n="form.variables.hint"
+                  ></p>
                 </div>
               </div>
             </div>

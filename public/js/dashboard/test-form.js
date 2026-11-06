@@ -9,6 +9,7 @@ import { withDefaultScheme } from "../core/url.js";
 import { prettyJson } from "../core/json.js";
 import { createCollapsible } from "../core/collapsible.js";
 import { checkHeaders } from "../core/headers.js";
+import { checkVariables } from "../core/variables.js";
 import { createHeaderEditor } from "./header-editor.js";
 
 // The page reloads when the language changes: values typed into the form but not yet started are kept under this key
@@ -77,6 +78,7 @@ export function createTestForm() {
     const statusText = $("status-text");
     const liveBadge = $("live-badge");
     const profileButtons = document.querySelectorAll("[data-profile]");
+    const variableButtons = document.querySelectorAll("[data-variable]");
     const bookBtn = $("target-book-btn");
     let profile = "CONSTANT";
     let locked = false;
@@ -208,7 +210,7 @@ export function createTestForm() {
     // While a test runs the form is locked, and the "Stop" button and live indicator are visible
     function setLocked(isLocked) {
         locked = isLocked;
-        for (const el of [urlInput, bookBtn, methodSelect, rpsInput, durationInput, stepCountInput, bodyInput, ...profileButtons]) {
+        for (const el of [urlInput, bookBtn, methodSelect, rpsInput, durationInput, stepCountInput, bodyInput, ...profileButtons, ...variableButtons]) {
             el.disabled = isLocked;
         }
         // The sections can still be opened during the test to see what's being sent, but not edited
@@ -261,6 +263,14 @@ export function createTestForm() {
             headersSection.open();
             return { ok: false, error: headerError };
         }
+
+        // {{emial}} or a variable in the server part of the address: caught here before the test starts
+        const variableError = checkVariables({
+            url,
+            body: methodSelect.value === "POST" ? bodyInput.value : "",
+            headers,
+        });
+        if (variableError) return { ok: false, error: variableError };
 
         return {
             ok: true,
@@ -372,6 +382,16 @@ export function createTestForm() {
     }
     methodSelect.addEventListener("change", updateMethod);
     bodyInput.addEventListener("input", updateSummaries);
+
+    // A variable button adds {{name}} where the cursor is in the JSON Body (replacing any selected text)
+    variableButtons.forEach((btn) =>
+        btn.addEventListener("click", () => {
+            const text = `{{${btn.dataset.variable}}}`;
+            bodyInput.setRangeText(text, bodyInput.selectionStart, bodyInput.selectionEnd, "end");
+            bodyInput.focus();
+            updateSummaries();
+        })
+    );
 
     setProfile("CONSTANT");
     updateMethod();

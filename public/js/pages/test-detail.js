@@ -4,7 +4,7 @@
 // The analysis loads separately after the rest of the page is visible (so a problem doesn't affect the page).
 
 import { $ } from "../core/dom.js";
-import { t, applyTranslations, getLocale, formatNumber } from "../core/i18n.js";
+import { t, applyTranslations, getLocale, getLanguage, formatNumber } from "../core/i18n.js";
 import { renderHeader } from "../core/header.js";
 import { attachHintsFromMarkup } from "../core/info-hint.js";
 import { confirmDialog } from "../core/confirm-dialog.js";
@@ -147,6 +147,20 @@ function setupReport(testRun) {
     link.title = running ? t("report.runningHint") : "";
 }
 
+// --- CSV ---
+
+// Once the test has ended, the CSV button downloads one row per request.
+// In Turkish Excel expects ";" between columns (the comma is the decimal separator), in English a comma.
+function setupCsv(testRun) {
+    const link = $("csv-btn");
+    const running = testRun.status === "RUNNING";
+    const separator = getLanguage() === "tr" ? "semicolon" : "comma";
+
+    link.href = running ? "#" : `/api/test-run/${encodeURIComponent(testRun.id)}/results.csv?sep=${separator}`;
+    link.classList.toggle("opacity-40", running);
+    link.classList.toggle("pointer-events-none", running);
+}
+
 // --- Deleting the test ---
 
 function setupDelete(testRun) {
@@ -213,6 +227,7 @@ async function load() {
         drawChart(testRun, windows);
         setupDelete(testRun);
         setupReport(testRun);
+        setupCsv(testRun);
         $("running-notice").hidden = testRun.status !== "RUNNING";
 
         // After the rest of the page is visible

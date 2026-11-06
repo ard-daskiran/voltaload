@@ -2,6 +2,7 @@ import { parentPort } from "node:worker_threads";
 import { monitorEventLoopDelay, performance } from "node:perf_hooks";
 import { Agent, request } from "undici";
 import { runScheduledLoop, type LoadProfile } from "./scheduler.js";
+import { createRequestBuilder, type VariableContext } from "./variables.js";
 import { REQUEST_TIMEOUT_MS, WORKER_BATCH_INTERVAL_MS } from "../config.js";
 
 if (!parentPort) {
@@ -19,6 +20,7 @@ interface StartMessage {
   method: string;
   body?: string;
   headers: { name: string; value: string }[];
+  variables: VariableContext | null; // Only for tests with variables
   pinnedAddress: string;
   pinnedFamily: 4 | 6;
   profile?: LoadProfile;
@@ -30,6 +32,7 @@ interface RequestResult {
   responseTime: number; // ms
   responseSize: number; // bytes (downloaded over the network, compressed)
   timestamp: number; // when the response completed (ms)
+  seq?: number; // the request's sequence number, only for tests with variables
 }
 
 function classifyError(err: any): ErrorType {
@@ -118,6 +121,7 @@ port.on("message", async (message: StartMessage) => {
     method,
     body,
     headers: userHeaders,
+    variables,
     pinnedAddress,
     pinnedFamily,
     profile,
@@ -126,6 +130,11 @@ port.on("message", async (message: StartMessage) => {
   const sendsBody = method !== "GET" && body !== undefined;
   const requestBody = sendsBody ? body : undefined;
   const headers = buildHeaders(sendsBody, userHeaders ?? []);
+
+  // Variables: the templates are prepared once; each request gets the next sequence number and its own values.
+  // null if the test has no variables: then every request is the same and nothing changes.
+  const buildRequest = variables ? createRequestBuilder(variables, { url, body: requestBody, headers }) : null;
+  let sequence = 0;
 
   // DNS pinning: every connection goes to the address approved by the main thread.
   // Node can do the address lookup in two forms (single address or list); we answer both.
@@ -175,8 +184,13 @@ port.on("message", async (message: StartMessage) => {
     targetRps,
     durationSeconds,
     () => {
-      const pending: Promise<void> = makeRequest(agent, url, method, requestBody, headers)
+      // The number is given when the request is sent, so it's the sending order
+      const seq = buildRequest ? ++sequence : undefined;
+      const request = buildRequest && seq !== undefined ? buildRequest(seq) : { url, body: requestBody, headers };
+
+      const pending: Promise<void> = makeRequest(agent, request.url, method, request.body, request.headers)
         .then((result) => {
+          if (seq !== undefined) result.seq = seq;
           batch.push(result);
         })
         .finally(() => {

@@ -6,9 +6,11 @@ import type { RequestHeader } from "./startRequest.js";
 // BigInt can't be converted to JSON, convert it to a number.
 // Headers are left out: the history list doesn't need them, and they may contain tokens.
 // The detail page adds them back as a list (parseHeaders).
-export function serializeRun<T extends { totalBytes: bigint | null; headers: string | null }>(run: T) {
-  const { headers, ...rest } = run;
+// The variable seed is never sent: the generated passwords can be computed from it.
+export function serializeRun<T extends { totalBytes: bigint | null; headers: string | null; variableSeed: string | null }>(run: T) {
+  const { headers, variableSeed, ...rest } = run;
   void headers;
+  void variableSeed;
   return { ...rest, totalBytes: run.totalBytes !== null ? Number(run.totalBytes) : null };
 }
 

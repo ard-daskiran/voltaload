@@ -22,6 +22,7 @@ interface StartTestRunParams {
   method: string;
   body?: string;
   headers: RequestHeader[];
+  variableSeed: string | null; // Only for tests with variables
   pinnedAddress: string;
   pinnedFamily: 4 | 6;
   profile?: LoadProfile;
@@ -34,6 +35,7 @@ interface ResultItem {
   responseTime: number;
   responseSize: number;
   timestamp: number;
+  seq?: number; // Only for tests with variables
 }
 
 interface ActiveRun {
@@ -92,6 +94,7 @@ function toDbRows(testRunId: string, items: ResultItem[]) {
     responseTime: r.responseTime,
     responseSize: r.responseSize,
     timestamp: new Date(r.timestamp),
+    seq: r.seq ?? null,
   }));
 }
 
@@ -343,6 +346,7 @@ export function startTestRun(params: StartTestRunParams): Promise<FinalStatus> {
       method: params.method,
       body: params.body,
       headers: params.headers,
+      variables: params.variableSeed ? { testRunId: params.testRunId, seed: params.variableSeed } : null,
       pinnedAddress: params.pinnedAddress,
       pinnedFamily: params.pinnedFamily,
       profile: params.profile,

@@ -1,6 +1,7 @@
 // Validation of the test start request: URL, method, RPS, duration, step rules and custom headers.
 
 import type { LoadProfile } from "../engine/scheduler.js";
+import { unknownVariable, usesVariables, variableInHost } from "../engine/variables.js";
 import { apiError, type ApiError } from "../errors.js";
 import {
   MIN_TARGET_RPS,
@@ -33,6 +34,8 @@ export interface StartRequest {
   targetRps: number;
   duration: number;
   profile: LoadProfile;
+  // Does the URL, body or a header value contain variables ({{email}}...)?
+  usesVariables: boolean;
 }
 
 // Managed by Volta and undici. undici refuses to send a request that sets them,
@@ -161,6 +164,17 @@ export function validateStartRequest(input: any): { ok: true; value: StartReques
   const headers = validateHeaders(rawHeaders);
   if (!headers.ok) return headers;
 
+      // Variables: only known names, and not in the server part of the address
+    const sendsBody = method !== "GET" && body !== undefined;
+    const texts = [url, ...(sendsBody ? [JSON.stringify(body)] : []), ...headers.value.map((header) => header.value)];
+    const unknown = unknownVariable(texts);
+    if (unknown !== null) {
+      return { ok: false, error: apiError("UNKNOWN_VARIABLE", { name: unknown.slice(0, 50) }) };
+    }
+    if (variableInHost(url)) {
+      return { ok: false, error: apiError("VARIABLE_IN_HOST") };
+    }
+
   return {
     ok: true,
     value: {
@@ -173,6 +187,7 @@ export function validateStartRequest(input: any): { ok: true; value: StartReques
       targetRps,
       duration,
       profile: loadProfile === "STEPPED" ? { type: "STEPPED", stepCount } : { type: "CONSTANT" },
+      usesVariables: usesVariables(texts),
     },
   };
 }

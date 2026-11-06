@@ -5,7 +5,7 @@
 
 import { Router } from "express";
 import type { Server } from "socket.io";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { prisma } from "../db/prisma.js";
 import {
   startTestRun,
@@ -21,6 +21,7 @@ import { getLiveWindows, getTestDetail } from "../services/resultQueries.js";
 import { parseListQuery, listTestRuns } from "../services/testRunList.js";
 import { deleteTestRun, clearAllTestRuns } from "../services/testRunDelete.js";
 import { analyzeTestRun } from "../analysis/index.js";
+import { buildResultsCsv } from "../services/resultsCsv.js";
 import { apiError, errorBody } from "../errors.js";
 
 export function createTestRunRouter(io: Server): Router {
@@ -49,6 +50,8 @@ export function createTestRunRouter(io: Server): Router {
 
       const testRunId = randomUUID();
       const bodyString = input.body !== undefined ? JSON.stringify(input.body) : undefined;
+      // A test with variables gets its own secret: the values of each request are computed from it
+      const variableSeed = input.usesVariables ? randomBytes(32).toString("hex") : null;
 
       await prisma.testRun.create({
         data: {
@@ -62,6 +65,7 @@ export function createTestRunRouter(io: Server): Router {
           duration: input.duration,
           loadProfile: input.profile.type,
           stepCount: input.profile.type === "STEPPED" ? input.profile.stepCount ?? null : null,
+          variableSeed,
         },
       });
 
@@ -73,6 +77,7 @@ export function createTestRunRouter(io: Server): Router {
         method: input.method,
         body: bodyString,
         headers: input.headers,
+        variableSeed,
         pinnedAddress: security.target.address,
         pinnedFamily: security.target.family,
         profile: input.profile,
@@ -136,6 +141,19 @@ export function createTestRunRouter(io: Server): Router {
     }
 
     res.json(analysis);
+  });
+
+      // Results as CSV, one row per request. ?sep=semicolon: for Excel in languages like Turkish (where the comma
+    // is the decimal separator, Excel expects ";" between columns); otherwise a comma.
+  testRunRouter.get("/:id/results.csv", async (req, res) => {
+      const csv = await buildResultsCsv(req.params.id, req.query.sep === "semicolon" ? ";" : ",");
+      if (!csv) {
+        return res.status(404).json(errorBody(apiError("TEST_NOT_FOUND")));
+      }
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${csv.filename}"`);
+      res.send(csv.content);
   });
 
   // Detail page: the test's record and summary (chart data comes from /:id/live)

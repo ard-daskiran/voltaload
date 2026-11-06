@@ -108,6 +108,20 @@
               <span data-i18n="report.button">RAPOR AL</span>
             </a>
 
+            <!-- CSV: downloads one row per request. Enabled once the test has ended (pages/test-detail.js). -->
+            <a
+              id="csv-btn"
+              href="#"
+              download
+              data-i18n-title="detail.csvTitle"
+              class="h-8 flex items-center gap-1.5 border border-secondary/60 text-secondary font-label-caps text-[11px] px-3 rounded hover:bg-secondary/10 transition-colors opacity-40 pointer-events-none"
+            >
+              <span class="material-symbols-outlined text-[16px]"
+                >download</span
+              >
+              <span data-i18n="detail.csv">CSV</span>
+            </a>
+
             <!-- Delete test: icon only, tooltip on hover -->
             <button
               type="button"

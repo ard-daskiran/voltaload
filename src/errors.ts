@@ -20,6 +20,9 @@ export type ErrorCode =
   | "HEADER_FORBIDDEN"
   | "HEADER_DUPLICATE"
   | "HEADERS_TOO_LARGE"
+    // Variables ({{email}}...)
+  | "UNKNOWN_VARIABLE"
+  | "VARIABLE_IN_HOST"
   // Target address
   | "URL_MALFORMED"
   | "URL_PROTOCOL"
@@ -74,6 +77,10 @@ const MESSAGES: Record<ErrorCode, (p: Params) => string> = {
   HEADER_FORBIDDEN: (p) => `The "${p.name}" header is managed by Volta and can't be set.`,
   HEADER_DUPLICATE: (p) => `The "${p.name}" header is used more than once.`,
   HEADERS_TOO_LARGE: (p) => `The headers are too large (max ${p.max} bytes in total).`,
+  UNKNOWN_VARIABLE: (p) =>
+    `Unknown variable: {{${p.name}}}. Available: {{email}}, {{username}}, {{password}}, {{n}}, {{uuid}}.`,
+  VARIABLE_IN_HOST: () =>
+    "Variables can't be used in the server part of the address, only after it, e.g. http://localhost:3000/api/users/{{n}}",
   URL_MALFORMED: () => "Invalid URL format.",
   URL_PROTOCOL: () => "Only http and https addresses can be tested.",
   URL_UNSPECIFIED: () => "0.0.0.0 is not a target address. Use localhost instead.",

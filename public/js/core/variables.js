@@ -8,7 +8,7 @@ import { t } from "./i18n.js";
 export const VARIABLE_NAMES = ["email", "username", "name", "password", "n", "uuid"];
 
 // {{name}}; spaces inside the braces are allowed ({{ email }})
-const VARIABLE_PATTERN = /\{\{\s*([^{}\s]*)\s*\}\}/g;
+const VARIABLE_PATTERN = /\{\{\s*([^{}\s]+)\s*\}\}/g;
 
 function findVariables(text) {
     return [...text.matchAll(VARIABLE_PATTERN)].map((match) => match[1]);

@@ -11,7 +11,7 @@ export type VariableName = (typeof VARIABLE_NAMES)[number];
 export type VariableValues = Record<VariableName, string>;
 
 // {{name}}; spaces inside the braces are allowed ({{ email }})
-const VARIABLE_PATTERN = /\{\{\s*([^{}\s]*)\s*\}\}/g;
+const VARIABLE_PATTERN = /\{\{\s*([^{}\s]+)\s*\}\}/g;
 
 // .test is reserved for testing and never belongs to a real site: if the tested app sends a confirmation email
 // to every new account, those emails can't reach anyone

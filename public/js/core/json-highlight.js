@@ -13,8 +13,8 @@ const CLASSES = {
 };
 
 // Same pattern as the variables (core/variables.js): {{name}}, spaces inside the braces allowed
-const VARIABLE_PATTERN = /\{\{\s*[^{}\s]*\s*\}\}/y;
-const VARIABLE_PATTERN_ALL = /\{\{\s*[^{}\s]*\s*\}\}/g;
+const VARIABLE_PATTERN = /\{\{\s*[^{}\s]+\s*\}\}/y;
+const VARIABLE_PATTERN_ALL = /\{\{\s*[^{}\s]+\s*\}\}/g;
 const NUMBER_PATTERN = /-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
 const LITERAL_PATTERN = /(?:true|false|null)\b/y;
 const PUNCTUATION = new Set(["{", "}", "[", "]", ",", ":"]);
